@@ -4,7 +4,7 @@
 // LV: 0 High, 1 Medium, 2 Low. localStorage.catbar = "level"; catbarLoad is set while the scene is built: still set
 // on the next visit means that load crashed the tab, so this one runs a level lower.
 const mob = matchMedia('(pointer:coarse)').matches, mem = navigator.deviceMemory;
-const keep = (k, v) => { try { localStorage[k] = v; } catch {} };
+const keep = (k, v) => { if (window.__wiped) return; try { localStorage[k] = v; } catch {} }; // __wiped: start over in progress
 let LV, bad;
 try { LV = localStorage.catbar; bad = localStorage.catbarLoad; } catch {}
 LV = LV != null && LV !== '' ? +LV : mob ? 2 : mem && mem <= 4 ? 2 : 0; // phones start on Low

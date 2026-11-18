@@ -61,6 +61,17 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 #q span { flex: 1; color: #ffb3d4; }
 #q button { flex: 1.2; padding: .7em 0; background: none; box-shadow: none; color: #fff4e6; }
 #q button:hover { background: #ffb3d433; }
+#sv { display: flex; align-items: center; gap: .4em; padding: .4em; border-radius: .7em; background: #1c120cb3; font-size: .8em; letter-spacing: .12em; text-transform: uppercase; }
+#sv span { flex: 1; color: #ffb3d4; }
+#sv button { flex: 1.2; padding: .7em 0; background: none; box-shadow: none; color: #fff4e6; font-size: .9em; }
+#sv button:hover { background: #ffb3d433; }
+#svReset { color: #ff9aa8 !important; }
+#svBox { position: absolute; inset: 0; z-index: 9; display: grid; place-items: center; padding: 1em; background: #0c0806cc; }
+#svBox[hidden] { display: none; }
+#svP { max-width: 26em; text-align: center; font-weight: 600; color: #f2e0d0; }
+#svText { width: min(26em, 85vw); padding: .6em; border: 0; border-radius: .5em; font: .75em/1.4 ui-monospace, Consolas, monospace; background: #fff4e6; color: #3a1a10; resize: none; user-select: text; -webkit-user-select: text; }
+#svMsg { min-height: 1.2em; color: #ffe27a; }
+#svBox .row { display: flex; gap: .8em; }
 #q .on { background: linear-gradient(#ffd0e6, #ff5ea8); box-shadow: inset 0 -.2em #0003; color: #3a1a10; pointer-events: none; }
 #k { display: flex; justify-content: center; gap: 2em; text-align: left; }
 #k p { display: grid; grid-template-columns: auto auto; align-content: start; align-items: center; gap: .55em .9em; }
@@ -287,6 +298,7 @@ body:not(.g) #tip, .s #tip { display: none; }
     <div id=g>
       <button id=d>Entra</button>
       <p id=q><span>Dettaglio</span><button>Basso</button><button>Medio</button><button>Alto</button></p>
+      <p id=sv><span>Salvataggio</span><button id=svExp>Esporta</button><button id=svImp>Importa</button><button id=svReset>Ricomincia</button></p>
       <div id=k>
         <p>
           <i><b>W</b><b>A</b><b>S</b><b>D</b></i>Cammina
@@ -334,6 +346,7 @@ body:not(.g) #tip, .s #tip { display: none; }
 <div id=joyBase><i></i></div>
 <p id=tip hidden>Tocca un gatto per andare a coccolarlo · tocca il pavimento per camminare · trascina per guardarti intorno · joystick in basso a sinistra</p>
 <div id=mbtn><button id=snackBtn aria-label=Snack>🐟</button><button id=laserBtn aria-label=Laser>🔴</button><button id=wearBtn aria-label=Vestiti>👒</button></div>
+<div id=svBox hidden><div class=g-box><header><b id=svT></b></header><p id=svP></p><textarea id=svText rows=4 spellcheck=false></textarea><p id=svMsg></p><p class=row><button id=svGo></button><button id=svNo>Annulla</button></p></div></div>
 <p id=toast hidden></p>
 <button id=brewBtn hidden></button>
 <p id=hold class=hud hidden></p>

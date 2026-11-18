@@ -82,6 +82,9 @@ browser o usa Chrome / Edge.
 - **Adozioni**: un cliente contento può chiedere di adottare un gatto che ti vuole bene. Se accetti, il gatto esce con
   la sua nuova famiglia, ricevi 60 monete, dopo un po' arriva una lettera e un nuovo trovatello entra nel locale.
   I gatti speciali delle carte non vengono mai adottati
+- **Salvataggio**: il gioco ricorda da solo nel browser monete, livello, gatti, vestiti, mobili, amicizie, e anche
+  l'ora del giorno, il meteo e dove ti trovavi. Dal menù: **Esporta** (un codice da copiare), **Importa** (per
+  portare il salvataggio su un altro dispositivo) e **Ricomincia** (azzera tutto, con conferma)
 - La versione del gioco è scritta in basso nella schermata iniziale
 
 | | |

@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { transformSync } from 'esbuild';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const FILES = ['quality.js', 'math.js', 'shaders.js', 'world.js', 'cats.js', 'main.js', 'shop.js', 'games.js', 'life.js', 'cafe.js', 'audio.js']; // concatenation order matters
+const FILES = ['quality.js', 'math.js', 'shaders.js', 'world.js', 'cats.js', 'main.js', 'shop.js', 'games.js', 'life.js', 'cafe.js', 'save.js', 'audio.js']; // concatenation order matters
 const readable = process.argv.includes('--readable');
 
 let js = FILES.map((f) => readFileSync(path.join(here, 'src', f), 'utf8')).join('\n');

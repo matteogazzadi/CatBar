@@ -10,6 +10,7 @@ if (!IT) {
     tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabHome: 'Home', plRot: '↻ Rotate', plOk: '✔ Place here', bStop: 'Stop!', bDone: 'Take it to the customer', aYes: 'Yes, it is time', aNo: 'No, it stays here', lOk: 'How lovely!', cafeHint: '☕ A customer is waiting: go to the coffee machine behind the bar', tabPacks: 'Cards', tabAlbum: 'Collection' };
   for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
   const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
+  const sv = document.querySelectorAll('#sv span, #sv button'); ['Save', 'Export', 'Import', 'Start over'].forEach((t, i) => sv[i] && (sv[i].textContent = t)); document.getElementById('svNo').textContent = 'Cancel';
   document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>F</b></i>Treat<i><b>P</b></i>Photo<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
 }
 if (!IT) { document.getElementById('shopBtn').title = 'Shop (B)'; document.getElementById('camBtn').title = 'Photo (P)'; document.getElementById('phSave').textContent = 'Save the photo'; document.getElementById('phClose').textContent = 'Close'; }

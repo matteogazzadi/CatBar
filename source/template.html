@@ -95,7 +95,14 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 #t.on { opacity: 1; }
 #t b { display: block; font-size: 1.25em; }
 #t span { font-size: .75em; letter-spacing: .1em; text-transform: uppercase; color: #ffd9b0; }
-#t i { display: block; margin-top: .3em; font-size: .8em; font-style: normal; color: #ffb3d4; }
+#t .needs { display: flex; justify-content: center; gap: .5em; margin-top: .3em; }
+.bar { position: relative; display: inline-block; width: 3.2em; height: .45em; border-radius: 1em; background: #0008; overflow: hidden; vertical-align: middle; }
+.bar::after { content: ''; position: absolute; inset: 0; transform-origin: 0; transform: scaleX(var(--v, 0)); background: #7ad05a; }
+#bh::after { background: #f0a040; } #bt::after { background: #4ab0ff; } #bj::after { background: #ff5ea8; }
+#t .needs .bar::before { position: absolute; left: -1.2em; top: -.45em; font-size: .9em; font-style: normal; }
+#t .needs { padding-left: 1.2em; gap: 1.6em; }
+#bh::before { content: '🍗'; } #bt::before { content: '💧'; } #bj::before { content: '❤'; }
+#t i#ti { display: block; margin-top: .3em; font-size: .8em; font-style: normal; color: #ffb3d4; }
 .plus { position: absolute; left: 50%; top: 42%; font-size: 1.6em; font-weight: 900; color: #ffe27a; text-shadow: 0 0 .5em #c8860a, 0 2px 4px #000; pointer-events: none; animation: plus 1.4s ease-out forwards; }
 @keyframes plus { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { transform: translate(-50%, -.4em) scale(1.15); opacity: 1; } to { transform: translate(-50%, -3em) scale(1); opacity: 0; } }
 #o { position: absolute; top: .6em; right: .6em; display: none; padding: .3em .6em; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffb3d4, 0 .3em 1em #0009; font-size: 1.3em; color: #fff4e6; opacity: .85; }
@@ -103,6 +110,59 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 .p #o { display: none; }
 #pet { position: absolute; right: 1.2em; bottom: 1.2em; display: none; width: 4.5em; height: 4.5em; border-radius: 50%; font-size: 1.2em; padding: 0; background: #ffb3d4cc; }
 @media (pointer: coarse) { .g #pet { display: flex; } }
+/* shop */
+#shopBtn { position: absolute; top: .7em; right: 4em; display: none; padding: .45em .9em; font-size: .85em; background: #1c120cd9; color: #fff4e6; box-shadow: inset 0 0 0 2px #ffd04a, 0 .3em 1em #0009; }
+.g #shopBtn { display: flex; }
+.p #shopBtn { opacity: .55; }
+#shop { position: absolute; inset: 0; display: none; place-items: center; padding: 1em; background: #1c120c99; backdrop-filter: blur(6px); }
+.s #shop { display: grid; }
+.s .hud, .s #shopBtn, .s #o { display: none !important; }
+.sh-box { width: min(62em, 100%); max-height: calc(100% - 1em); display: flex; flex-direction: column; border-radius: 1em; background: #2a1a12f2; box-shadow: 0 1em 3em #000a, inset 0 0 0 2px #ffb3d433; overflow: hidden; }
+.sh-box header { display: flex; flex-wrap: wrap; align-items: center; gap: .6em 1em; padding: .8em 1em; border-bottom: 2px solid #ffb3d422; }
+#shT { font: italic 900 1.6em Georgia, serif; color: #ffd0e6; }
+#shop nav { display: flex; gap: .3em; flex: 1; flex-wrap: wrap; }
+#shop nav button, #shX { padding: .5em .9em; background: none; box-shadow: none; color: #fff4e6; font-size: .8em; }
+#shop nav button.on { background: linear-gradient(#ffd0e6, #ff5ea8); color: #3a1a10; }
+.pill { display: flex; align-items: center; gap: .4em; padding: .25em .8em .25em .3em; border-radius: 2em; background: #1c120c; font-size: 1.15em; }
+#shBody { overflow: auto; padding: 1em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(11em, 1fr)); gap: .8em; }
+.item { display: flex; flex-direction: column; gap: .35em; padding: .9em; border-radius: .8em; background: #3a2418; box-shadow: inset 0 0 0 1px #ffffff14; }
+.item .ico, .pack-art { font-size: 2.4em; line-height: 1.1; }
+.item p { font-size: .75em; font-weight: 600; color: #e8d2c0; flex: 1; }
+.item small { font-size: .7em; color: #ffb3d4; }
+.item button { justify-content: center; padding: .55em; font-size: .85em; }
+.item button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.pk.xmas { background: linear-gradient(160deg, #6a1a1a, #1a4a2a); }
+.pk.classic { background: linear-gradient(160deg, #4a2a5a, #2a3a6a); }
+.odds { display: flex; flex-wrap: wrap; gap: .2em .6em; font-size: .7em !important; }
+.count { margin-bottom: .8em; font-size: .85em; }
+.card { position: relative; display: flex; flex-direction: column; align-items: center; gap: .2em; padding: .6em; border-radius: .7em; text-align: center; background: #1c120c; box-shadow: inset 0 0 0 2px var(--rc), 0 0 1.2em -.2em var(--rc); }
+.card span { font-size: .7em; letter-spacing: .1em; text-transform: uppercase; color: var(--rc); }
+.r0 { --rc: #c9c2b8; } .r1 { --rc: #5aa8ff; } .r2 { --rc: #c070ff; } .r3 { --rc: #ffc640; }
+.card.locked { opacity: .55; }
+.por { position: relative; width: 6em; height: 7em; }
+.sil { position: absolute; inset: 0; background-size: cover;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M30 116C16 112 12 90 22 70c4-9 8-14 8-22L24 18l15 15c7-3 15-3 22 0l15-15-6 30c0 8 4 13 8 22 10 20 6 42-8 46-4 2-36 2-40 0zM70 112c12 2 22-2 24-14 1-7-4-10-7-6 2 8-6 13-17 12z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 120'%3E%3Cpath d='M30 116C16 112 12 90 22 70c4-9 8-14 8-22L24 18l15 15c7-3 15-3 22 0l15-15-6 30c0 8 4 13 8 22 10 20 6 42-8 46-4 2-36 2-40 0zM70 112c12 2 22-2 24-14 1-7-4-10-7-6 2 8-6 13-17 12z'/%3E%3C/svg%3E") center/contain no-repeat; }
+.eyes::before, .eyes::after { content: ''; position: absolute; top: 34%; width: 9%; height: 7%; border-radius: 50%; background: radial-gradient(ellipse 25% 60%, #000 60%, var(--e) 70%); }
+.eyes::before { left: 39%; } .eyes::after { left: 54%; }
+.acc { position: absolute; left: 50%; top: 2%; transform: translateX(-50%); font-size: 1.8em; font-style: normal; }
+.acc.scarf, .acc.bow, .acc.bell { top: 46%; font-size: 1.3em; }
+.acc.halo { top: -8%; }
+.q { position: absolute; inset: 0; display: grid; place-items: center; font-size: 2.5em; font-style: normal; color: #ffffff55; }
+#pack { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 1.5em; background: #0c0806e6; }
+#pack[hidden] { display: none; }
+#cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2em; perspective: 60em; }
+.card.big { width: 11em; height: 16em; padding: 0; background: none; box-shadow: none; transform-style: preserve-3d; transition: transform .7s cubic-bezier(.3,1.4,.5,1); transform: rotateY(180deg); }
+.card.big.flip { transform: rotateY(0); }
+.card.big > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .4em; padding: 1em; border-radius: .9em; backface-visibility: hidden; }
+.card.big .back { transform: rotateY(180deg); background: repeating-linear-gradient(45deg, #ff5ea8 0 10px, #e0408a 10px 20px); box-shadow: inset 0 0 0 4px #fff4e6; font-size: 3em; }
+.card.big .front { background: radial-gradient(circle at 50% 35%, #3a2418, #140c08); box-shadow: inset 0 0 0 3px var(--rc), 0 0 2.5em -.3em var(--rc); }
+.card.big.r3 .front { box-shadow: inset 0 0 0 3px var(--rc), 0 0 4em .2em var(--rc); }
+.card.big .por { width: 7em; height: 8.5em; }
+.card.big b { font-size: 1.15em; }
+.card.big em { font-size: .7em; font-style: normal; color: #ffe27a; display: flex; align-items: center; gap: .3em; }
+.card.big em .coin { width: 1em; height: 1em; }
 #i { position: absolute; bottom: 1em; left: 1.2em; margin: 0; font: .8em/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; text-shadow: 0 1px 4px #000; pointer-events: none; }
 </style>
 </head>
@@ -110,9 +170,9 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 <canvas id=c></canvas>
 <div id=coins class=hud><span class=coin></span><span id=n>0</span></div>
 <div id=x class=hud><svg viewBox="0 0 36 36"><circle id=r cx=18 cy=18 r=15.9 pathLength=100 /></svg></div>
-<div id=t class=hud><b id=tn></b><span id=tb></span><i id=ti></i></div>
+<div id=t class=hud><b id=tn></b><span id=tb></span><span class=needs><i class=bar id=bh title=fame></i><i class=bar id=bt title=sete></i><i class=bar id=bj title=benessere></i></span><i id=ti></i></div>
 <div id=m>
-  <h1>Cat Bar<small>caffè dei gatti</small></h1>
+  <h1>Cat Bar<small id=tagline>caffè dei gatti</small></h1>
   <div id=a>
     <div id=l><div id=p><i id=b></i></div><p id=s>Apriamo il locale…</p></div>
     <div id=g>
@@ -126,6 +186,8 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
           <i><b>Shift</b></i>Più veloce
         </p>
         <p>
+          <i><b>B</b></i>Negozio
+          <i><b>F</b></i>Dai uno snack
           <i><b>C</b></i>Accovacciati
           <i><b>Esc</b></i>Menù
           <i><b>M</b></i>Audio
@@ -138,6 +200,17 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 </div>
 <button id=o aria-label=Menù>≡</button>
 <button id=pet aria-label=Coccola>🐾</button>
+<button id=shopBtn>🛍 Negozio (B)</button>
+<div id=shop>
+  <div class=sh-box>
+    <header><b id=shT>Negozio</b>
+      <nav><button data-tab=care id=tabCare>Cibo e cura</button><button data-tab=toys id=tabToys>Giochi</button><button data-tab=packs id=tabPacks>Pacchetti di carte</button><button data-tab=album id=tabAlbum>Collezione</button></nav>
+      <span class=pill><span class=coin></span><span id=shN>0</span></span><button id=shX aria-label=Chiudi>✕</button>
+    </header>
+    <div id=shBody></div>
+  </div>
+  <div id=pack hidden><div id=cards></div><button id=packOk>Evviva!</button></div>
+</div>
 <pre id=i></pre>
 <script>
 /*SCRIPT*/

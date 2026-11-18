@@ -3,6 +3,15 @@
 // ============================================================================
 const $ = (id) => document.getElementById(id);
 const canvas = $('c'), info = $('i'), body = document.body;
+// English page text when the browser is not Italian (the page itself is written in Italian)
+if (!IT) {
+  document.documentElement.lang = 'en';
+  const T = { s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
+    tabToys: 'Toys', tabCare: 'Food & care', tabPacks: 'Card packs', tabAlbum: 'Collection' };
+  for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
+  const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
+  document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
+}
 const SHOT = /[?&]shot/.test(location.search), DBG = +(location.search.match(/dbg=(\d)/) || [0, 0])[1]; // fixed size, no adaptation: for screenshots
 let loaded = 0, dead;
 const say = (m, to, ms) => {
@@ -13,16 +22,16 @@ const say = (m, to, ms) => {
   return new Promise((r) => { a.ready.then(() => setTimeout(r)); setTimeout(r, document.hidden ? 0 : 1e3); });
 };
 const fail = (m) => { throw new Error(m, { cause: 1 }); };
-if (!navigator.gpu) fail('Il Cat Bar ha bisogno di WebGPU. Prova con una versione recente di Chrome o Edge.');
+if (!navigator.gpu) fail(L_('Il Cat Bar ha bisogno di WebGPU. Prova con una versione recente di Chrome o Edge.', 'Cat Bar needs WebGPU. Try a recent version of Chrome or Edge.'));
 const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
-if (!adapter) fail('Nessun adattatore WebGPU trovato.');
+if (!adapter) fail(L_('Nessun adattatore WebGPU trovato.', 'No WebGPU adapter found.'));
 const device = await adapter.requestDevice();
 device.addEventListener('uncapturederror', (e) => console.error('GPU: ' + e.error.message));
 device.lost.then((l) => {
   console.error('device lost: ' + l.reason + ' ' + l.message);
   if (l.reason === 'destroyed' || SHOT) return;
   if (LV < 2) { keep('catbar', LV + 1); location.reload(); }
-  dead = body.className = 'l e'; $('s').textContent = 'La scheda grafica si è fermata. Ricarica la pagina per riprovare.';
+  dead = body.className = 'l e'; $('s').textContent = L_('La scheda grafica si è fermata. Ricarica la pagina per riprovare.', 'The graphics device stopped. Reload the page to try again.');
 });
 // ?shot renders off-screen and copies frames into a 2D canvas on request (headless browsers cannot present WebGPU)
 const ctx = SHOT ? null : canvas.getContext('webgpu'), FMT = SHOT ? 'rgba8unorm' : navigator.gpu.getPreferredCanvasFormat();
@@ -34,13 +43,13 @@ const tex = (w, h, format, usage, o = {}) => device.createTexture({ size: [w, h,
 keep('catbarLoad', 1);
 
 // ---------------------------------------------------------------- build the café
-await say('Sistemiamo i tavolini…', 0.2, 600);
+await say(L_('Sistemiamo i tavolini…', 'Setting out the tables…'), 0.2, 600);
 const gW = W.pack(), gS = SKYM.pack(), gP = PROPS.pack();
-await say('Spazzoliamo i gatti…', 0.55, 1400);
+await say(L_('Spazzoliamo i gatti…', 'Brushing the cats…'), 0.55, 1400);
 const gC = buildCatMesh();
 const WH = buildWhiskers();
 const EM = new Mesh(); sphere(EM, M4(), 1, [1, 1, 1], 0, 20); const gE = EM.pack();
-await say('Accendiamo le luci…', 0.8, 600);
+await say(L_('Accendiamo le luci…', 'Switching on the lights…'), 0.8, 600);
 
 const mkVB = (g) => ({ vb: buf(new Uint8Array(g.vb), BU.VERTEX), ib: buf(g.ib, BU.INDEX), n: g.count });
 const VW = mkVB(gW), VS = mkVB(gS), VP = mkVB(gP), VC = mkVB(gC), VE = mkVB(gE), VWH = buf(WH, BU.VERTEX);
@@ -68,7 +77,8 @@ ARTS.forEach((cv, l) => {
 
 const NU = 140, UB = new Float32Array(NU), UBS = new Float32Array(NU);
 const ubo = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST });
-const NMD = 1 + TOYS.length, MDD = new Float32Array(NMD * 16); ident(MDD.subarray(0, 16));
+const NMD = 256, MDD = new Float32Array(NMD * 16); ident(MDD.subarray(0, 16)); // prop matrices: 0 = the room
+const DL = []; // props to draw this frame: [mesh name, matrix slot]
 const mdBuf = device.createBuffer({ size: MDD.byteLength, usage: BU.STORAGE | BU.COPY_DST });
 const bnBuf = device.createBuffer({ size: BND.byteLength, usage: BU.STORAGE | BU.COPY_DST });
 const cpBuf = device.createBuffer({ size: CPD.byteLength, usage: BU.STORAGE | BU.COPY_DST });
@@ -160,7 +170,7 @@ const SUNC = [1.0 * 7.5, 0.76 * 7.5, 0.5 * 7.5];
 // ---------------------------------------------------------------- the player
 const PL = { x: 3.2, z: 2.2, yaw: -2.2, pitch: -0.12, eye: 1.6, crouch: 0, vx: 0, vz: 0, bob: 0 };
 const KEY = {};
-let coins = 0; try { coins = +localStorage.catbarCoins || 0; } catch {}
+let coins = 30; try { if (localStorage.catbarCoins != null) coins = +localStorage.catbarCoins || 0; } catch {} // a little start-up money
 $('n').textContent = coins;
 function movePlayer(dt) {
   let f = (KEY.KeyW || KEY.ArrowUp ? 1 : 0) - (KEY.KeyS || KEY.ArrowDown ? 1 : 0) + TOUCH.f, s = (KEY.KeyD || KEY.ArrowRight ? 1 : 0) - (KEY.KeyA || KEY.ArrowLeft ? 1 : 0) + TOUCH.s;
@@ -192,7 +202,7 @@ const inGame = () => body.classList.contains('g');
 addEventListener('keydown', (e) => {
   KEY[e.code] = true;
   if (e.code === 'KeyH') info.hidden = !info.hidden;
-  if (e.code === 'Escape' && !locked && inGame()) body.className = 'm';
+  if (e.code === 'Escape' && !locked && inGame() && !SHOPOPEN) body.className = 'm';
   if (e.code === 'KeyM' && typeof toggleMute === 'function') toggleMute();
   if (e.code === 'KeyE' && inGame()) PET.key = true;
 });
@@ -213,10 +223,10 @@ addEventListener('mousemove', (e) => {
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   if (locked) body.className = 'g p';
-  else if (inGame()) { body.className = 'm'; PET.mouse = false; }
+  else if (inGame() && !SHOPOPEN) { body.className = 'm'; PET.mouse = false; }
 });
 function enter() {
-  body.className = 'g'; $('d').textContent = 'Torna dai gatti';
+  body.className = 'g'; $('d').textContent = L_('Torna dai gatti', 'Back to the cats');
   if (!mob) lockMouse();
   if (typeof startAudio === 'function') startAudio();
 }
@@ -250,7 +260,7 @@ $('pet').addEventListener('pointerup', () => { PET.mouse = false; });
 $('pet').addEventListener('pointerleave', () => { PET.mouse = false; });
 
 // ---------------------------------------------------------------- looking at and petting cats
-const PET = { on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0 };
+const PET = { on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
 const PET_TIME = 1.6, COOLDOWN = 15, REACH = 2.5;
 const ring = $('r'), xh = $('x'), tl = $('t');
 let lastTarget = null;
@@ -268,14 +278,28 @@ function pickCat(ox, oy, oz, dx, dy, dz) {
   }
   return best;
 }
-function popCoin() {
-  coins++; keep('catbarCoins', coins); $('n').textContent = coins;
+function popCoin(n = 1) {
+  coins += n; keep('catbarCoins', coins); $('n').textContent = coins;
   const c = $('coins'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
-  const p = document.createElement('div'); p.className = 'plus'; p.innerHTML = '+1 <span class=coin></span>'; body.appendChild(p); setTimeout(() => p.remove(), 1500);
+  const p = document.createElement('div'); p.className = 'plus'; p.innerHTML = `+${n} <span class=coin></span>`; body.appendChild(p); setTimeout(() => p.remove(), 1500);
   if (typeof coinSound === 'function') coinSound();
+}
+// a snack is put down in front of the cat you look at (F); it eats it on the spot
+const SNACK = { t: 0, x: 0, z: 0, cat: null };
+function giveSnack(c) {
+  if (!c || !SAVE || !SAVE.snack) return false;
+  SAVE.snack--; saveItems();
+  SNACK.cat = c; SNACK.t = 2.5; SNACK.x = c.sp[2][0]; SNACK.z = c.sp[2][2];
+  if (c.st !== 'sleep' || true) { c.st = 'snack'; c.pose = c.pose === STAND ? CROUCH : c.pose === SLEEP ? LOAF : c.pose; c.tm = 2.5; }
+  c.hunger = max(0, c.hunger - 0.3); c.joy = min(1, c.joy + 0.25); c.meowT = 0.4;
+  for (let k = 0; k < 4; k++) PTD.set([c.sp[2][0] + rr(-0.06, 0.06), c.sp[2][1] + 0.05 + k * 0.03, c.sp[2][2] + rr(-0.06, 0.06), 0.001 + k * 0.12], ((PET.hk++) % (NH - 1)) * 4);
+  return true;
 }
 function updatePet(dt, fx, fy, fz) {
   const target = inGame() ? pickCat(PL.x, PL.eye, PL.z, fx, fy, fz) : null;
+  if (SNACK.t > 0) SNACK.t -= dt;
+  if (KEY.KeyF && !PET.fDown && target) giveSnack(target);
+  PET.fDown = !!KEY.KeyF;
   const holding = PET.mouse || PET.key;
   if (holding) { // pet the cat under the crosshair; a short grace period when it slips out of it
     if (target) { if (target !== PET.cat || !PET.on) { PET.cat = target; PET.t = 0; } PET.on = true; PET.lost = 0; }
@@ -287,12 +311,12 @@ function updatePet(dt, fx, fy, fz) {
     const c = PET.cat;
     if (hypot(c.sp[1][0] - PL.x, c.sp[1][2] - PL.z) > REACH + 0.6) PET.on = false;
     c.pet = 0.4; purr = 1;
-    PET.t += dt;
+    PET.t += dt; PET.stroke += dt / 1.25;
     PET.heart -= dt;
-    if (PET.heart < 0) { PET.heart = 0.32; const k = PET.hk++ % NH; PTD.set([c.sp[2][0] + rr(-0.05, 0.05), c.sp[2][1] + 0.07, c.sp[2][2] + rr(-0.05, 0.05), 0.001], k * 4); }
+    if (PET.heart < 0) { PET.heart = 0.32; const k = PET.hk++ % (NH - 1); PTD.set([c.sp[2][0] + rr(-0.05, 0.05), c.sp[2][1] + 0.07, c.sp[2][2] + rr(-0.05, 0.05), 0.001], k * 4); }
     if (PET.t >= PET_TIME) {
       PET.t = 0;
-      if (c.coinT <= 0) { popCoin(); c.coinT = COOLDOWN; c.petTotal++; if (rnd() < 0.5) meow(c, 0.6); }
+      if (c.coinT <= 0) { popCoin(c.joy > 0.6 ? 2 : 1); c.coinT = COOLDOWN; c.petTotal++; if (rnd() < 0.5) meow(c, 0.6); }
     }
   }
   for (const c of CATS) c.coinT -= dt;
@@ -301,12 +325,14 @@ function updatePet(dt, fx, fy, fz) {
   const show = PET.on ? PET.cat : target;
   xh.classList.toggle('on', !!show);
   ring.style.strokeDasharray = `${PET.on ? (PET.t / PET_TIME) * 100 : 0} 100`;
-  if (show !== lastTarget || PET.on || (show && show.coinT > -1)) {
+  if (show !== lastTarget || PET.on || (show && show.coinT > -1) || frame % 20 === 0) {
     lastTarget = show;
     tl.classList.toggle('on', !!show);
     if (show) {
       $('tn').textContent = show.name; $('tb').textContent = show.breed;
-      $('ti').textContent = PET.on ? (show.coinT > 0 ? 'fa le fusa… ♥' : 'coccole in corso… ♥') : show.coinT > 0 ? `ha appena avuto coccole · ${Math.ceil(show.coinT)}s` : (mob ? 'tieni premuta la zampa: coccola' : 'tieni premuto il click: coccola') + ' → +1';
+      for (const [id, v] of [['bh', 1 - show.hunger], ['bt', 1 - show.thirst], ['bj', show.joy]]) $(id).style.setProperty('--v', v.toFixed(2));
+      const need = show.hunger > 0.6 ? L_('ha fame', 'is hungry') : show.thirst > 0.6 ? L_('ha sete', 'is thirsty') : '';
+      $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tieni premuta la zampa: coccola', 'hold the paw button: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack ? L_(' · F: snack', ' · F: treat') : ''));
     }
   }
   for (let k = 0; k < NH; k++) if (PTD[k * 4 + 3] > 0) { PTD[k * 4 + 3] += dt; if (PTD[k * 4 + 3] > 1.6) PTD[k * 4 + 3] = 0; }
@@ -339,9 +365,32 @@ const colorAtt = (view, clear, resolve) => ({ view, resolveTarget: resolve, load
 function drawStatic(p, depthOnly) {
   p.setVertexBuffer(0, VW.vb); p.setIndexBuffer(VW.ib, 'uint32'); p.drawIndexed(VW.n);
 }
-function drawProps(p) {
+function drawProps(p, noHand) {
   p.setVertexBuffer(0, VP.vb); p.setIndexBuffer(VP.ib, 'uint32');
-  TOYS.forEach((ty, i) => p.drawIndexed(PROPR[i][1], 1, PROPR[i][0], 0, 1 + i));
+  for (const [name, slot] of DL) if (!(noHand && name === 'hand')) p.drawIndexed(PM[name][1], 1, PM[name][0], 0, slot);
+}
+// fill the prop matrices: toys, boxes, catnip, the cats' accessories and the petting hand
+const HM = M4();
+function layoutProps() {
+  DL.length = 0; let slot = 1;
+  const put = (name, m) => { if (slot >= NMD || !PM[name]) return; MDD.set(m, slot * 16); DL.push([name, slot++]); };
+  for (const ty of TOYS) { HM.set(ty.R); HM[12] = ty.x; HM[13] = ty.kind === 'yarn' ? ty.r : 0; HM[14] = ty.z; put(ty.mesh, HM); }
+  for (const b of BOXES) { ident(HM); tr(HM, b.x, 0, b.z); ry(HM, b.yaw); put('box', HM); }
+  for (const n of NIPS) { ident(HM); tr(HM, n.x, 0, n.z); ry(HM, n.yaw); put('nip', HM); }
+  if (BOWL.food > 0.01) { ident(HM); tr(HM, BOWL.fx, 0.012 + 0.012 * BOWL.food, BOWL.z); sc(HM, 0.6 + 0.4 * BOWL.food, BOWL.food, 0.6 + 0.4 * BOWL.food); put('kibble', HM); }
+  if (BOWL.water > 0.01) { ident(HM); tr(HM, BOWL.wx, 0.03 + 0.03 * BOWL.water, BOWL.z); sc(HM, 0.85 + 0.25 * BOWL.water); put('water', HM); }
+  if (SNACK.t > 0) { ident(HM); tr(HM, SNACK.x, 0.008, SNACK.z); put('snack', HM); }
+  for (const c of CATS) for (const a of c.acc) { const b = ACC[a]; put('a_' + a, BND.subarray((c.i * NB + b) * 16, (c.i * NB + b + 1) * 16)); }
+  // the hand strokes from behind the head down the back, then lifts and comes back
+  if (PET.on && PET.cat) {
+    const c = PET.cat, k = PET.stroke % 1, fwd = k < 0.7, s = fwd ? sstep(0, 1, k / 0.7) : 1 - sstep(0, 1, (k - 0.7) / 0.3);
+    const a = c.sp[2], b = c.sp[0], m = c.sp[1];
+    const st = (i) => mix(m[i], a[i], 0.3), en = (i) => mix(m[i], b[i], 0.95);
+    const x = mix(st(0), en(0), s), z = mix(st(2), en(2), s);
+    const y = mix(st(1), en(1), s) + 0.1 * c.scale + (fwd ? -0.008 * sin(PI * s) : sin(PI * (k - 0.7) / 0.3) * 0.07);
+    ident(HM); tr(HM, x, y, z); ry(HM, atan2(-(b[2] - a[2]), b[0] - a[0])); rz(HM, fwd ? -0.12 : 0.15); put('hand', HM);
+  }
+  return slot;
 }
 function drawCats(p, shells) {
   p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32');
@@ -370,7 +419,7 @@ function render() {
   let p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadow.createView(), depthLoadOp: 'load', depthStoreOp: 'store' } });
   p.setBindGroup(0, bgShadow);
   p.setPipeline(pCShadow); for (const c of CATS) { p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32'); p.drawIndexed(VC.n, 1, 0, 0, c.i * 64); }
-  p.setPipeline(pWShadow); drawProps(p);
+  p.setPipeline(pWShadow); drawProps(p, true);
   p.end();
   // depth pre-pass (for AO and light shafts)
   p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: TX.depth.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'store' } });
@@ -394,8 +443,8 @@ function render() {
   p.setPipeline(pW); drawStatic(p); drawProps(p);
   p.setVertexBuffer(0, VS.vb); p.setIndexBuffer(VS.ib, 'uint32'); p.drawIndexed(VS.n);
   p.setPipeline(pC); drawCats(p, true);
-  p.setPipeline(pE); p.setVertexBuffer(0, VE.vb); p.setIndexBuffer(VE.ib, 'uint32'); p.drawIndexed(VE.n, NC * 2);
-  p.setPipeline(pWh); p.setVertexBuffer(0, VWH); p.draw(NWH, NC);
+  p.setPipeline(pE); p.setVertexBuffer(0, VE.vb); p.setIndexBuffer(VE.ib, 'uint32'); p.drawIndexed(VE.n, CATS.length * 2);
+  p.setPipeline(pWh); p.setVertexBuffer(0, VWH); p.draw(NWH, CATS.length);
   p.setPipeline(pPt); p.draw(6, NDUST + NH);
   p.end();
   // bloom
@@ -435,6 +484,11 @@ function tick(dt) {
   for (const c of CATS) updateCat(c, dt, simT);
   updateToys(dt);
   updatePet(dt, fx, fy, fz);
+  // the laser dot lands where you look on the floor
+  if (LASER.on && fy < -0.05) {
+    const t = -PL.eye / fy; LASER.x = clamp(PL.x + fx * t, -RX + 0.2, RX - 0.2); LASER.z = clamp(PL.z + fz * t, -RZ + 0.2, RZ - 0.2);
+    PTD.set([LASER.x, 0.004, LASER.z, -1], (NH - 1) * 4);
+  } else { if (PTD[(NH - 1) * 4 + 3] < 0) PTD[(NH - 1) * 4 + 3] = 0; if (LASER.on && fy >= -0.05) { LASER.x = 99; } }
   return [fx, fy, fz];
 }
 function draw(fx, fy, fz) {
@@ -447,9 +501,9 @@ function draw(fx, fy, fz) {
     const k = min(1, (1.3 * c.scale) / max(d, 0.3)) * (c.fur > 0.02 ? 1.4 : 1);
     c.shells = clamp(round(MAXSH * k), 6, 60); c.P[12] = c.shells;
   }
-  Q.writeBuffer(bnBuf, 0, BND); Q.writeBuffer(cpBuf, 0, CPD); Q.writeBuffer(ptBuf, 0, PTD);
-  TOYS.forEach((ty, i) => { const m = MDD.subarray((1 + i) * 16, (2 + i) * 16); m.set(ty.R); m[12] = ty.x; m[13] = ty.r; m[14] = ty.z; });
-  Q.writeBuffer(mdBuf, 0, MDD);
+  Q.writeBuffer(bnBuf, 0, BND, 0, CATS.length * NB * 16); Q.writeBuffer(cpBuf, 0, CPD, 0, CATS.length * 24); Q.writeBuffer(ptBuf, 0, PTD);
+  const ns = layoutProps();
+  Q.writeBuffer(mdBuf, 0, MDD, 0, ns * 16);
   render();
   frame++;
 }
@@ -461,11 +515,11 @@ function loop(now) {
   const [fx, fy, fz] = tick(dt);
   if (SHOT) return; // ?shot draws only when grab() asks
   draw(fx, fy, fz);
-  if (!info.hidden && frame % 15 === 0) info.textContent = `${(1000 / ftAvg).toFixed(0)} fps · ${RW}×${RH_} · ${CATS.filter((c) => c.vis).length} gatti visibili`;
+  if (!info.hidden && frame % 15 === 0) info.textContent = `${(1000 / ftAvg).toFixed(0)} fps · ${RW}×${RH_} · ${CATS.filter((c) => c.vis).length} ${L_('gatti visibili', 'cats in view')}`;
 }
 info.hidden = true;
 fitSize();
 requestAnimationFrame(loop);
-await say('Pronto!', 1, 400);
+await say(L_('Pronto!', 'Ready!'), 1, 400);
 try { localStorage.removeItem('catbarLoad'); } catch {}
 body.className = 'm';

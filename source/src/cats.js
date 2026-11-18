@@ -34,16 +34,21 @@ E_(3, 0.4, 0.015, [0.268, 0.283, 0], [0.03, 0.024, 0.031]);
 for (const s of [-1, 1]) E_(3, 0.35, 0.01, [0.277, 0.279, s * 0.013], [0.016, 0.014, 0.015]);
 E_(3, 0.35, 0.012, [0.262, 0.264, 0], [0.022, 0.012, 0.018]);
 E_(3, 0, 0.006, [0.291, 0.295, 0], [0.0075, 0.0065, 0.0095]);
-for (const s of [-1, 1]) RC(3, 0.35, 0.012, [0.206, 0.33, s * 0.036], [0.21, 0.397, s * 0.06], 0.027, 0.004, 2.3);
+for (const s of [-1, 1]) RC(3, 0.35, 0.012, [0.206, 0.33, s * 0.036], [0.21, 0.402, s * 0.062], 0.029, 0.004, 2.3);
+for (const s of [-1, 1]) E_(3, 0.6, 0.01, [0.247, 0.334, s * 0.024], [0.017, 0.008, 0.014]);   // brows over the eyes
+for (const s of [-1, 1]) E_(3, 1.1, 0.02, [0.225, 0.272, s * 0.04], [0.025, 0.022, 0.018]);   // cheek fluff
+for (const s of [-1, 1]) E_(1, 1, 0.03, [0.085, 0.255, s * 0.03], [0.045, 0.018, 0.022]);     // shoulder blades
 for (const s of [-1, 1]) {
   const z = s * 0.045, zh = s * 0.05;
   RC(s > 0 ? 4 : 5, 0.9, 0.03, [0.1, 0.19, z], [0.095, 0.075, z], 0.036, 0.022);
   RC(s > 0 ? 6 : 7, 0.7, 0.012, [0.095, 0.075, z], [0.11, -0.002, z], 0.02, 0.016);
   E_(s > 0 ? 8 : 9, 0.55, 0.012, [0.122, -0.013, s * 0.046], [0.026, 0.017, 0.021]);
+  for (const t of [-0.015, -0.005, 0.005, 0.015]) E_(s > 0 ? 8 : 9, 0.45, 0.006, [0.139 - abs(t) * 0.4, -0.017, s * 0.046 + t], [0.009, 0.009, 0.0075]); // toes
   RC(s > 0 ? 10 : 11, 1, 0.035, [-0.15, 0.18, zh], [-0.095, 0.075, zh], 0.047, 0.024);
   RC(s > 0 ? 12 : 13, 0.8, 0.012, [-0.095, 0.075, zh], [-0.175, 0.015, zh], 0.021, 0.015);
   RC(s > 0 ? 14 : 15, 0.55, 0.01, [-0.175, 0.015, zh], [-0.156, -0.013, zh], 0.015, 0.015);
   E_(s > 0 ? 14 : 15, 0.55, 0.01, [-0.148, -0.014, zh], [0.027, 0.016, 0.021]);
+  for (const t of [-0.014, -0.005, 0.005, 0.014]) E_(s > 0 ? 14 : 15, 0.45, 0.006, [-0.126 - abs(t) * 0.4, -0.018, zh + t], [0.0085, 0.0085, 0.007]);
 }
 for (let i = 0; i < 6; i++) {
   const a = bh(16 + i), b = i < 5 ? bh(17 + i) : [TAILEND[0], TAILEND[1], 0];
@@ -199,26 +204,62 @@ const BREEDS = [
   ['Biscotto', 'Gattina tartarugata', 5, 0xc06a2a, 0, 0, 0xc0a030, 0.013, 0.6, 0x1a1412, 1, 0],
   ['Ragù', 'Ragdoll', 3, 0xeee4d4, 0x6a5040, 0.35, 0x4a8ae8, 0.022, 1.05, 0, 1, 0],
 ];
-const NC = BREEDS.length;
-const CPD = new Float32Array(NC * 20);            // per-cat shader parameters
-const BND = new Float32Array(NC * NB * 16);       // skin matrices
-const CATS = BREEDS.map((b, i) => {
-  const [name, breed, typ, base, sec, white, eye, fur, scale, third, pink, wd] = b;
-  const P = CPD.subarray(i * 20, i * 20 + 20);
-  P.set([...lin(base), typ, ...lin(sec || base), white, ...hex(eye), fur * 1.25, 12, 0, rr(0, 50), wd, ...lin(third || base), pink]);
-  return {
-    i, name, breed, P, scale, fur, x: 0, y: 0, z: 0, yaw: rr(0, TAU), spd: 0, st: 'idle', tm: rr(1, 6), goal: null, perch: null,
-    pw: new Float32Array(7), pv: new Float32Array(24), gait: rnd(), walk: 0, lid: 0, blink: rr(1, 5), look: 0, lookYaw: 0, lookPitch: 0,
+// special cats, found in card packs: [id, name it, name en, rarity 0-3, tag, pattern, base, second, white, eyes, fur, scale,
+// third, pink nose, glow, sparkle, metal, accessories]
+const SPECIALS = [
+  ['pallina', 'Pallina', 'Pallina', 0, '', 0, 0x141212, 0, 0.7, 0x70c050, 0.012, 0.95, 0, 1, 0, 0, 0, ['bell']],
+  ['caramella', 'Caramella', 'Caramel', 0, '', 0, 0xe8cfa0, 0, 0.2, 0xd09030, 0.014, 1, 0, 1, 0, 0, 0, ['bow']],
+  ['polpetta', 'Polpetta', 'Meatball', 0, '', 1, 0xe8964a, 0xb05a20, 0.4, 0xd0a030, 0.016, 0.66, 0, 1, 0, 0, 0, []],
+  ['nebbia', 'Nebbia', 'Mist', 0, '', 1, 0xa8a8a8, 0x4a4a4c, 0.25, 0x60b0c0, 0.026, 1.05, 0, 1, 0, 0, 0, []],
+  ['cacao', 'Cacao', 'Cocoa', 0, '', 0, 0x5a3a28, 0, 0, 0xd0a020, 0.01, 1, 0, 0, 0, 0, 0, ['bell']],
+  ['babbo', 'Babbo Miao', 'Santa Paws', 1, 'xmas', 0, 0xe0904a, 0, 0.6, 0x5aa0e0, 0.016, 1.08, 0, 1, 0, 0, 0, ['santa']],
+  ['rudolph', 'Rudolph', 'Rudolph', 1, 'xmas', 1, 0x8a6040, 0x3a2414, 0.25, 0xc08030, 0.013, 1, 0, 1, 0, 0, 0, ['antlers']],
+  ['elfo', 'Elfo', 'Elf', 1, 'xmas', 0, 0x161414, 0, 0.45, 0x60d070, 0.011, 0.9, 0, 0, 0, 0, 0, ['elf', 'bell']],
+  ['strega', 'Strega', 'Witch', 1, 'halloween', 0, 0x0e0c0c, 0, 0, 0x60ff60, 0.011, 1, 0, 0, 0.6, 0, 0, ['witch']],
+  ['panda', 'Panda', 'Panda', 1, '', 13, 0xeeeae2, 0x141212, 0, 0x806040, 0.02, 1.05, 0, 0, 0, 0, 0, []],
+  ['bastoncino', 'Bastoncino', 'Candy Cane', 2, 'xmas', 9, 0xc81e28, 0xf2f0ec, 0, 0x40c060, 0.014, 1, 0, 1, 0, 0.3, 0, ['scarf']],
+  ['fiocco', 'Fiocco di Neve', 'Snowflake', 2, 'xmas', 10, 0xeef4ff, 0x9ad0ff, 0, 0x7ad0ff, 0.024, 1, 0, 1, 0.25, 1, 0, ['scarf']],
+  ['lanterna', 'Zucca Lanterna', 'Jack-o-Lantern', 2, 'halloween', 11, 0xf07a10, 0xffa020, 0, 0xffb020, 0.013, 1.05, 0, 0, 1, 0, 0, ['witch']],
+  ['neon', 'Neon', 'Neon', 2, '', 12, 0x080810, 0x30f0ff, 0, 0xff40d0, 0.01, 1, 0, 0, 1.2, 0, 0, []],
+  ['arcobaleno', 'Arcobaleno', 'Rainbow', 2, '', 8, 0xffffff, 0, 0, 0xffffff, 0.02, 1, 0, 1, 0.15, 0.6, 0, ['bow']],
+  ['galassia', 'Galassia', 'Galaxy', 3, '', 6, 0x10082a, 0x8040ff, 0, 0xc0a0ff, 0.016, 1.05, 0, 0, 1, 1.4, 0, []],
+  ['mida', 'Re Mida', 'King Midas', 3, '', 7, 0xf0b040, 0, 0, 0x40d0a0, 0.012, 1.1, 0, 0, 0, 1, 1, ['crown']],
+  ['angelo', 'Angelo', 'Angel', 3, 'xmas', 0, 0xfaf8f4, 0xffe6a0, 0, 0x8ad0ff, 0.024, 1, 0, 1, 0.5, 1, 0, ['halo']],
+  ['lava', 'Lava', 'Lava', 3, '', 14, 0x0c0a0a, 0xff5010, 0, 0xff8020, 0.011, 1.05, 0, 0, 1.3, 0.3, 0, []],
+];
+const MAXC = 48, NPOSE = 8;
+var LASER = { on: false, x: 0, z: 0 }; // the laser pointer dot (main.js moves it)
+const CPD = new Float32Array(MAXC * 24);          // per-cat shader parameters (6 vec4)
+const BND = new Float32Array(MAXC * NB * 16);     // skin matrices
+const CATS = [];
+function addCat(name, breed, typ, base, sec, white, eye, fur, scale, third, pink, wd, glow = 0, sparkle = 0, metal = 0, accs = [], special = null) {
+  const i = CATS.length; if (i >= MAXC) return null;
+  const P = CPD.subarray(i * 24, i * 24 + 24);
+  P.set([...lin(base), typ, ...lin(sec || base), white, ...hex(eye), fur * 1.25, 12, 0, rr(0, 50), wd, ...lin(third || base), pink, typ, glow, sparkle, metal]);
+  const c = {
+    i, name, breed, P, scale, fur, special, acc: accs, x: 0, y: 0, z: 0, yaw: rr(0, TAU), spd: 0, st: 'idle', tm: rr(1, 6), goal: null, perch: null,
+    pw: new Float32Array(NPOSE), pv: new Float32Array(24), gait: rnd(), walk: 0, lid: 0, blink: rr(1, 5), look: 0, lookYaw: 0, lookPitch: 0,
     tail: rr(0, 9), mood: 0, pet: 0, petTotal: 0, coinT: 0, meowT: rr(4, 20), purr: 0, lick: 0, toy: null, ph: 0, stuck: 0, lx: 0, lz: 0,
     jump: 0, hx: 0, hz: 0, sp: [[0, 0, 0], [0, 0, 0], [0, 0, 0]], vis: true, shells: 12, dcam: 5, pose: 1, sleepiness: rr(0.2, 0.8),
-    M: Array.from({ length: NB }, () => M4()),
+    petMode: null, petPh: 0, nipT: 0, hunger: rr(0.1, 0.45), thirst: rr(0.1, 0.45), joy: rr(0.35, 0.6), M: Array.from({ length: NB }, () => M4()),
   };
-});
+  CATS.push(c); return c;
+}
+const BREED_EN = { 'Europeo tigrato': 'European tabby', 'Siamese': 'Siamese', 'Calico': 'Calico', 'Tuxedo': 'Tuxedo', 'Persiano': 'Persian',
+  'Rosso tigrato': 'Ginger tabby', 'Nero': 'Black', 'Certosino': 'Chartreux', 'Maine Coon': 'Maine Coon', 'Bengala': 'Bengal',
+  'Gattino tigrato': 'Tabby kitten', 'Gattina tartarugata': 'Tortoiseshell kitten', 'Ragdoll': 'Ragdoll' };
+for (const b of BREEDS) addCat(b[0], L_(b[1], BREED_EN[b[1]]), ...b.slice(2));
+function addSpecial(id) {
+  const d = SPECIALS.find((s) => s[0] === id); if (!d) return null;
+  const [, it, en, rar, , typ, base, sec, white, eye, fur, scale, third, pink, glow, sparkle, metal, accs] = d;
+  return addCat(L_(it, en), L_(RARITY[rar][0], RARITY[rar][1]), typ, base, sec, white, eye, fur, scale, third, pink, 0, glow, sparkle, metal, accs, d);
+}
+const RARITY = [['Comune', 'Common', '#c9c2b8'], ['Raro', 'Rare', '#5aa8ff'], ['Epico', 'Epic', '#c070ff'], ['Leggendario', 'Legendary', '#ffc640']];
 
 // ---------------------------------------------------------------- poses
 // parameters: 0 rootY 1 rootX 2 rootPitch 3 rootRoll 4 chestPitch 5 chestYaw 6 neckPitch 7 headPitch (world) 8 headYaw 9 headRoll
 // 10 tailLift 11 tailCurve 12 tailCurl 13-20 wrist/hock targets FL FR HL HR (x, y) 21 paw angle 22 foot angle 23 neckYaw
-const STAND = 0, SIT = 1, LOAF = 2, SLEEP = 3, GROOM = 4, CROUCH = 5, STRETCH = 6;
+const STAND = 0, SIT = 1, LOAF = 2, SLEEP = 3, GROOM = 4, CROUCH = 5, STRETCH = 6, ROLL = 7;
 const POSES = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.45, 0.2, 0, 0.11, -0.005, 0.11, -0.005, -0.175, 0.015, -0.175, 0.015, R_PAW, R_FT, 0],
   [-0.124, 0.012, 0.66, 0, 0.0, 0, -0.32, 0.04, 0, 0, 0.55, 0.02, 0.45, 0.085, -0.006, 0.085, -0.006, -0.11, -0.012, -0.11, -0.012, -0.25, -0.05, 0],
@@ -227,6 +268,7 @@ const POSES = [
   [-0.124, 0.012, 0.66, 0, 0.0, 0, -0.15, -0.55, -0.3, 0.15, 0.55, 0.02, 0.45, 0.16, 0.17, 0.085, -0.006, -0.11, -0.012, -0.11, -0.012, 1.2, -0.05, 0],
   [-0.08, 0, -0.04, 0, -0.1, 0, 0.18, 0.04, 0, 0, -0.25, 0.1, 0, 0.15, -0.005, 0.15, -0.005, -0.13, 0.012, -0.13, 0.012, R_PAW, -0.6, 0],
   [-0.04, 0, -0.32, 0, -0.15, 0, 0.32, 0.25, 0, 0, 0.7, -0.08, 0, 0.32, -0.008, 0.3, -0.008, -0.18, 0.015, -0.18, 0.015, -0.1, R_FT, 0],
+  [-0.148, 0, 0.1, 2.75, -0.25, 0, 0.1, 0.5, 0, 0.3, 0.1, 0.05, 0.35, 0.15, 0.05, 0.13, 0.07, -0.09, 0.06, -0.07, 0.08, 0.6, 0.4, 0], // on the back, paws up
 ];
 // eating/sniffing: crouch with the head down is POSES[CROUCH] with headPitch overridden in update
 
@@ -324,7 +366,7 @@ const AV = [0, 0];
 function setPose(cat, p) { cat.pose = p; }
 function decide(cat) {
   const r = rnd();
-  cat.toy = null; cat.mood = 0;
+  cat.toy = null; cat.mood = 0; cat.box = null; cat.y = cat.perch ? cat.y : 0;
   if (cat.perch) {
     const pr = cat.perch;
     if (r < pr.sleep * cat.sleepiness * 1.3) { cat.st = 'sleep'; setPose(cat, SLEEP); cat.tm = rr(18, 40); }
@@ -333,13 +375,19 @@ function decide(cat) {
     return;
   }
   const dp = hypot(cat.x - PL.x, cat.z - PL.z);
+  // needs come first: water, then food; with an empty bowl the cat comes to ask you
+  if (cat.thirst > 0.55 && BOWL.water > 0.03) { cat.st = 'walk'; cat.goal = [BOWL.wx + rr(-0.2, 0.25), BOWL.z + rr(0.24, 0.36)]; cat.next = 'drink'; setPose(cat, STAND); cat.tm = 30; return; }
+  if (cat.hunger > 0.55 && BOWL.food > 0.03) { cat.st = 'walk'; cat.goal = [BOWL.fx + rr(-0.25, 0.2), BOWL.z + rr(0.24, 0.36)]; cat.next = 'eat'; setPose(cat, STAND); cat.tm = 30; return; }
+  if ((cat.hunger > 0.6 || cat.thirst > 0.6) && dp < 7 && rnd() < 0.6) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 15; cat.meowT = rr(0.5, 2); return; }
+  // shop items are irresistible: a free box, a catnip cushion nearby
+  if (BOXES.length && rnd() < 0.35) { const bx = pick(BOXES); if (!CATS.some((o) => o.box === bx)) { cat.st = 'walk'; cat.goal = [bx.x, bx.z]; cat.next = 'box'; cat.box = bx; setPose(cat, STAND); cat.tm = 30; return; } }
+  for (const n of NIPS) if (cat.nipT <= 0 && hypot(n.x - cat.x, n.z - cat.z) < 3 && rnd() < 0.6) { cat.st = 'walk'; cat.goal = [n.x, n.z]; cat.next = 'nip'; setPose(cat, STAND); cat.tm = 30; return; }
   if (r < 0.12 && dp < 5 && dp > 1) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 20; return; }
   if (r < 0.32) { // play with the nearest free toy
     let best = null, bd = 1e9; for (const t of TOYS) { const d = hypot(t.x - cat.x, t.z - cat.z); if (d < bd && !CATS.some((o) => o.toy === t)) { bd = d; best = t; } }
     if (best) { cat.st = 'play'; cat.toy = best; cat.ph = 0; setPose(cat, STAND); cat.tm = 30; return; }
   }
   if (r < 0.42) { const b = pick(BEDS); if (!CATS.some((o) => o !== cat && hypot(o.x - b.x, o.z - b.z) < 0.4)) { cat.st = 'walk'; cat.goal = [b.x, b.z]; cat.next = 'bed'; setPose(cat, STAND); cat.tm = 30; return; } }
-  if (r < 0.48) { cat.st = 'walk'; cat.goal = [1.05 + rr(-0.1, 0.1), -2.68]; cat.next = 'eat'; setPose(cat, STAND); cat.tm = 30; return; }
   if (r < 0.56) { cat.st = 'stretch'; setPose(cat, STRETCH); cat.tm = rr(2.5, 4); return; }
   if (r < 0.68) { cat.st = 'groom'; setPose(cat, GROOM); cat.tm = rr(5, 10); return; }
   if (r < 0.8) { cat.st = 'idle'; setPose(cat, pick([SIT, LOAF, SIT])); cat.tm = rr(5, 14); return; }
@@ -373,18 +421,41 @@ function initCats() {
   });
 }
 
-const PW = new Float32Array(7);
 function updateCat(cat, dt, t) {
   cat.tm -= dt;
+  // needs: hungry in ~8 minutes, thirsty in ~6; well-being drifts towards how fed and loved the cat is
+  cat.hunger = min(1, cat.hunger + dt / 480); cat.thirst = min(1, cat.thirst + dt / 360);
+  const target = 0.85 - 0.5 * max(cat.hunger, cat.thirst) - (cat.st === 'sleep' ? -0.05 : 0);
+  cat.joy = clamp(cat.joy + (target - cat.joy) * dt / 240 + (cat.pet > 0 ? dt * (SAVE && SAVE.brush ? 0.09 : 0.05) : 0), 0, 1);
+  // a perched cat that is very hungry or thirsty jumps down
+  if (cat.perch && (cat.hunger > 0.75 || cat.thirst > 0.75) && cat.pet <= 0 && cat.st !== 'sleep') {
+    const [x, z] = (() => { for (let k = 0; k < 40; k++) { const a = rr(0, TAU), x = cat.perch.x + cos(a) * rr(0.4, 0.9), z = cat.perch.z + sin(a) * rr(0.4, 0.9); if (freeAt(x, z, 0.25)) return [x, z]; } return randFree(0.3); })();
+    cat.perch = null; cat.x = x; cat.z = z; cat.y = 0; decide(cat);
+  }
   const P = cat.pv;
   let walking = false, targetLid = 0, look = 0;
   const dpl = hypot(cat.x - PL.x, cat.z - PL.z);
   cat.tailSw = 0.25; cat.tailF = 1.1; cat.tailTip = 0;
-  if (cat.pet > 0) { // being petted: stay put, close the eyes, purr, tail up
-    cat.spd = damp(cat.spd, 0, 8, dt); targetLid = cat.st === 'sleep' ? 1 : 0.75; look = 1; cat.tailSw = 0.08;
-    if (cat.pose === STAND || cat.pose === STRETCH || cat.pose === CROUCH) setPose(cat, SIT);
-    if (cat.st !== 'sleep') { cat.st = 'petted'; cat.tm = rr(4, 8); }
-  } else switch (cat.st) {
+  if (cat.pet > 0) { // being petted: each cat answers in its own way (see the reactions below)
+    cat.spd = damp(cat.spd, 0, 8, dt); targetLid = cat.st === 'sleep' ? 1 : 0.8; look = 1; cat.tailSw = 0.08; cat.hop = 0;
+    if (!cat.petMode) {
+      const floor = !cat.perch && cat.st !== 'box';
+      cat.petMode = cat.st === 'sleep' ? 'sleepy' : floor && rnd() < 0.22 ? 'roll' : cat.pose === STAND && rnd() < 0.6 ? 'arch' : pick(['rub', 'rub', 'knead']);
+      if (cat.petMode === 'roll') setPose(cat, ROLL);
+      else if (cat.petMode !== 'arch' && cat.pose !== LOAF && cat.st !== 'sleep') setPose(cat, SIT);
+      if (cat.petMode === 'knead' && cat.pose === LOAF) setPose(cat, SIT);
+      if (rnd() < 0.5) cat.meowT = rr(0.3, 1.5);
+    }
+    cat.petPh += dt / 1.25;
+    if (!cat.perch && cat.st !== 'box' && cat.petMode !== 'roll' && cat.st !== 'sleep') faceTo(cat, PL.x, PL.z, dt, 1.2);
+    if (cat.st !== 'sleep' && cat.st !== 'box') { cat.st = 'petted'; cat.tm = rr(4, 8); }
+  } else {
+    if (cat.petMode) { if (cat.petMode === 'roll' && cat.st === 'petted') setPose(cat, SIT); cat.petMode = null; }
+    if (cat.nipT > 0) cat.nipT -= dt;
+    // the laser dot pulls in every awake cat on the floor that can see it
+    if (LASER.on && !cat.perch && cat.st !== 'chase' && cat.st !== 'sleep' && cat.st !== 'box' && hypot(LASER.x - cat.x, LASER.z - cat.z) < 5) { cat.st = 'chase'; cat.ph = 0; cat.toy = null; cat.tm = 60; setPose(cat, STAND); }
+  }
+  if (cat.pet <= 0) switch (cat.st) {
     case 'idle': case 'petted':
       look = dpl < 3.5 ? 1 : 0;
       targetLid = cat.pose === LOAF ? 0.45 : 0.05;
@@ -395,14 +466,45 @@ function updateCat(cat, dt, t) {
     case 'stretch': targetLid = 0.7; cat.tailSw = 0.1; if (cat.tm < 0) { cat.st = 'idle'; setPose(cat, SIT); cat.tm = rr(3, 8); } break;
     case 'walk': {
       walking = true; cat.tailSw = 0.35; cat.tailTip = -0.3;
-      if (walkTo(cat, cat.goal[0], cat.goal[1], dt, 0.38) || cat.tm < 0) {
+      if (cat.zoom > 0) cat.zoom -= dt;
+      if (walkTo(cat, cat.goal[0], cat.goal[1], dt, cat.zoom > 0 ? 1.1 : 0.38) || cat.tm < 0) {
         if (cat.next === 'bed') { cat.st = 'sleep'; setPose(cat, SLEEP); cat.tm = rr(20, 45); }
-        else if (cat.next === 'eat') { cat.st = 'eat'; setPose(cat, CROUCH); cat.tm = rr(5, 9); }
+        else if (cat.next === 'eat' || cat.next === 'drink') { cat.st = cat.next; setPose(cat, CROUCH); cat.tm = rr(6, 10); }
+        else if (cat.next === 'box' && cat.box) { cat.st = 'box'; setPose(cat, rnd() < 0.5 ? LOAF : SIT); cat.tm = rr(20, 45); cat.x = cat.box.x; cat.z = cat.box.z; cat.y = 0.008; }
+        else if (cat.next === 'nip') { cat.st = 'nip'; setPose(cat, ROLL); cat.tm = rr(7, 11); cat.nipT = 45; meow(cat, 0.8); }
         else { cat.st = 'idle'; setPose(cat, pick([SIT, STAND, LOAF])); cat.tm = rr(3, 9); }
       }
       break;
     }
-    case 'eat': faceTo(cat, 1.05, -2.95, dt); targetLid = 0.3; if (cat.tm < 0) decide(cat); break;
+    case 'eat': case 'drink': { // the bowl empties as they eat; an empty bowl ends the meal
+      const food = cat.st === 'eat', bx = food ? BOWL.fx : BOWL.wx;
+      faceTo(cat, bx, BOWL.z, dt); targetLid = 0.3;
+      if (food) { if (BOWL.food > 0) { cat.hunger = max(0, cat.hunger - dt * 0.09); BOWL.food = max(0, BOWL.food - dt * 0.006); } else cat.tm = min(cat.tm, 0); }
+      else { if (BOWL.water > 0) { cat.thirst = max(0, cat.thirst - dt * 0.12); BOWL.water = max(0, BOWL.water - dt * 0.005); } else cat.tm = min(cat.tm, 0); }
+      if (cat.tm < 0 || (food ? cat.hunger : cat.thirst) < 0.02) { cat.joy = min(1, cat.joy + 0.1); decide(cat); }
+      break;
+    }
+    case 'snack': targetLid = 0.6; cat.mood = 1; if (cat.tm < 0) decide(cat); break;
+    case 'box': look = dpl < 3 ? 1 : 0; targetLid = 0.3; cat.x = cat.box.x; cat.z = cat.box.z; if (cat.tm < 0) { cat.y = 0; decide(cat); } break;
+    case 'nip': { // catnip: roll around on the back, then zoom off
+      targetLid = 0.55; cat.happy = 1; cat.tailSw = 0.6; cat.tailF = 4; cat.mood = 1;
+      if (cat.tm < 0) { cat.st = 'walk'; cat.goal = randFree(0.35); cat.next = null; cat.zoom = 6; setPose(cat, STAND); cat.tm = 12; }
+      break;
+    }
+    case 'chase': { // the laser dot
+      walking = true; cat.tailSw = 0.6; cat.tailF = 5;
+      const d = hypot(LASER.x - cat.x, LASER.z - cat.z);
+      if (!LASER.on || d > 6) { decide(cat); break; }
+      if (cat.ph === 2) {
+        cat.jump += dt / 0.35; const k = min(cat.jump, 1);
+        const nx = mix(cat.jx, cat.ex, sstep(0, 1, k)), nz = mix(cat.jz, cat.ez, sstep(0, 1, k));
+        if (freeAt(nx, nz, CATR * cat.scale)) { cat.x = nx; cat.z = nz; }
+        cat.hop = sin(PI * k) * 0.14; walking = false;
+        if (k >= 1) { cat.hop = 0; cat.ph = 0; }
+      } else if (d < 0.5 && d > 0.2 && rnd() < dt * 2.5) { cat.ph = 2; cat.jump = 0; cat.jx = cat.x; cat.jz = cat.z; cat.ex = LASER.x; cat.ez = LASER.z; faceTo(cat, LASER.x, LASER.z, 1, 10); }
+      else { setPose(cat, d < 0.25 ? CROUCH : STAND); walkTo(cat, LASER.x, LASER.z, dt, 0.95, 0.18); if (d < 0.25) faceTo(cat, LASER.x, LASER.z, dt, 6); }
+      break;
+    }
     case 'beg': {
       walking = dpl > 0.75; look = dpl < 2.5 ? 1 : 0;
       if (walking) { cat.tailSw = 0.2; cat.mood = 1; walkTo(cat, PL.x, PL.z, dt, 0.42, 0.7); }
@@ -439,11 +541,11 @@ function updateCat(cat, dt, t) {
   }
   if (cat.perch) { cat.x = cat.perch.x; cat.y = cat.perch.y; cat.z = cat.perch.z; }
   // blend the pose weights
-  for (let k = 0; k < 7; k++) cat.pw[k] = damp(cat.pw[k], k === cat.pose ? 1 : 0, cat.pose === SLEEP || cat.pw[SLEEP] > 0.1 ? 2.2 : 3.5, dt);
-  let ws = 0; for (let k = 0; k < 7; k++) ws += cat.pw[k];
+  for (let k = 0; k < NPOSE; k++) cat.pw[k] = damp(cat.pw[k], k === cat.pose ? 1 : 0, cat.pose === SLEEP || cat.pw[SLEEP] > 0.1 ? 2.2 : 3.5, dt);
+  let ws = 0; for (let k = 0; k < NPOSE; k++) ws += cat.pw[k];
   P.fill(0);
-  for (let k = 0; k < 7; k++) { const w = cat.pw[k] / ws; if (w < 1e-4) continue; const Q = POSES[k]; for (let j = 0; j < 24; j++) P[j] += Q[j] * w; }
-  if (cat.st === 'eat') P[7] = -0.75;
+  for (let k = 0; k < NPOSE; k++) { const w = cat.pw[k] / ws; if (w < 1e-4) continue; const Q = POSES[k]; for (let j = 0; j < 24; j++) P[j] += Q[j] * w; }
+  if (cat.st === 'eat' || cat.st === 'drink' || cat.st === 'snack') { P[7] = -0.75 + 0.06 * sin(t * (cat.st === 'drink' ? 9 : 5)); }
   // walk cycle
   cat.walk = damp(cat.walk, walking ? clamp(cat.spd / 0.25, 0, 1) : 0, 6, dt);
   if (cat.walk > 0.01) {
@@ -465,6 +567,16 @@ function updateCat(cat, dt, t) {
   // grooming: lick the raised paw
   if (cat.st === 'groom') { P[7] += sin(cat.lick) * 0.12; P[14] += sin(cat.lick) * 0.01; }
   if (cat.swipe > 0) { cat.swipe -= dt * 3; P[13] += sin(cat.swipe * PI) * 0.12; P[14] += sin(cat.swipe * PI) * 0.1; P[21] += sin(cat.swipe * PI) * 1.2; }
+  // petting reactions, in rhythm with the strokes
+  if (cat.pet > 0 && cat.petMode) {
+    const ph = cat.petPh * TAU, sn = sin(ph);
+    if (cat.petMode === 'rub') { P[7] += 0.16 * sn; P[9] += 0.32 * sin(ph + 1); P[6] += 0.12 * sn; P[3] += 0.07 * sin(ph + 0.5); P[0] += 0.006 * (sn + 1); P[23] += 0.15 * sin(ph * 0.5); }
+    else if (cat.petMode === 'knead') { const k = sin(ph * 1.7); P[14] += 0.028 * max(0, k); P[16] += 0.028 * max(0, -k); P[13] += 0.012 * k; P[15] -= 0.012 * k; P[9] += 0.12 * sin(ph * 0.5); P[7] += 0.08; }
+    else if (cat.petMode === 'arch') { P[0] += 0.012 + 0.006 * sn; P[2] += 0.06; P[4] -= 0.16; P[6] += 0.1; P[10] = 1.6; P[11] = -0.06; cat.tailSw = 0.05; cat.tailF = 14; P[1] += 0.01 * sn; }
+    else if (cat.petMode === 'roll') { P[3] += 0.22 * sin(ph * 0.5); P[14] += 0.03 * sin(t * 4.5); P[16] += 0.03 * sin(t * 4.5 + 2); P[21] += 0.5 * sin(t * 4.5); P[9] += 0.25 * sin(ph * 0.5); }
+    else { P[4] += 0.04 * sn; P[9] += 0.05 * sn; } // sleepy: a slow stretch into the hand
+  }
+  if (cat.st === 'nip') { const w = t * 3.2; P[3] += 0.35 * sin(w * 0.6); P[14] += 0.035 * sin(w * 1.7); P[16] += 0.035 * sin(w * 1.9 + 1); P[18] += 0.03 * sin(w * 1.3); P[21] += 0.7 * sin(w * 1.7); P[9] += 0.4 * sin(w * 0.5); }
   // breathing
   P[4] += sin(t * (cat.st === 'sleep' ? 1.8 : 2.6) + cat.i) * 0.012;
   // happy tail: up with a curl at the tip
@@ -479,7 +591,6 @@ function updateCat(cat, dt, t) {
     const rel = wrapA(atan2(-dz, dx) - cat.yaw), el = atan2(dy, hypot(dx, dz));
     cat.lookYaw = damp(cat.lookYaw, clamp(rel, -1.3, 1.3), 4, dt); cat.lookPitch = damp(cat.lookPitch, clamp(el, -0.4, 0.9), 4, dt);
     P[23] += cat.lookYaw * 0.4 * cat.look; P[8] += cat.lookYaw * 0.6 * cat.look; P[7] += cat.lookPitch * 0.8 * cat.look;
-    if (cat.pet > 0) P[9] += sin(t * 1.3) * 0.18;
   }
   // eyelids and blinking
   cat.blink -= dt; if (cat.blink < 0) cat.blink = rr(2, 7);
@@ -488,7 +599,7 @@ function updateCat(cat, dt, t) {
   cat.P[13] = cat.lid;
   // meows
   cat.meowT -= dt * (dpl < 3 ? 1.6 : 1);
-  if (cat.meowT < 0) { cat.meowT = rr(10, 35); if (cat.st !== 'sleep' && cat.pet <= 0 && typeof meow === 'function') meow(cat); }
+  if (cat.meowT < 0) { cat.meowT = rr(10, 35); if (cat.st !== 'sleep' && typeof meow === 'function') meow(cat, cat.pet > 0 ? 0.55 : 1); }
   pose(cat, t + cat.i * 3.7);
 }
 
@@ -497,6 +608,18 @@ function hitToy(ty, a, s) { ty.vx += cos(a) * s; ty.vz -= sin(a) * s; }
 const RT = new Float32Array(16), RT2 = new Float32Array(16);
 function updateToys(dt) {
   for (const ty of TOYS) {
+    if (ty.kind === 'mouse') { // a wind-up mouse scurries in curves until it runs down; a hit winds it up again
+      if (hypot(ty.vx, ty.vz) > 0.25) { ty.wind = rr(3, 6); ty.yaw = atan2(-ty.vz, ty.vx); }
+      ty.vx = ty.vz = 0;
+      if (ty.wind > 0) {
+        ty.wind -= dt; ty.yaw += sin(ty.wind * 2.3 + ty.x * 3) * 2.5 * dt;
+        const v = 0.55 * min(1, ty.wind), nx = ty.x + cos(ty.yaw) * v * dt, nz = ty.z - sin(ty.yaw) * v * dt;
+        if (freeAt(nx, nz, 0.05)) { ty.x = nx; ty.z = nz; } else ty.yaw += PI * 0.6;
+      }
+      ident(ty.R); ry(ty.R, ty.yaw); rz(ty.R, ty.wind > 0 ? sin(ty.wind * 40) * 0.05 : 0);
+      const dx = ty.x - PL.x, dz = ty.z - PL.z; if (hypot(dx, dz) < 0.3 && ty.wind <= 0) { ty.wind = rr(3, 5); ty.yaw = atan2(-dz, dx); }
+      continue;
+    }
     const sp = hypot(ty.vx, ty.vz);
     if (sp > 1e-3) {
       let nx = ty.x + ty.vx * dt, nz = ty.z + ty.vz * dt;

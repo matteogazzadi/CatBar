@@ -6,7 +6,7 @@ Sei dentro il Cat Bar: il sole del pomeriggio entra dalle finestre, al bancone c
 giocano, dormono, si lavano e miagolano. Dal locale non si esce, ma puoi girare dove vuoi. Se tieni premuto il click
 su un gatto lo accarezzi: fa le fusa e tu guadagni una moneta.
 
-Non ci sono immagini, modelli 3D né file audio: tutto è generato dal codice. Il gioco è un **unico file HTML di 95 KB**.
+Non ci sono immagini, modelli 3D né file audio: tutto è generato dal codice. Il gioco è un **unico file HTML di circa 125 KB**.
 
 ![Il bancone con l'insegna al neon](.github/screenshots/bar.jpg)
 
@@ -38,6 +38,21 @@ browser o usa Chrome / Edge.
 - **L'audio**, sintetizzato dal vivo: un piano elettrico lo-fi, il fruscio del vinile, i miagolii (ognuno diverso, più
   acuti per i gattini e posizionati nello spazio), le fusa e il tintinnio della moneta
 
+### Novità
+
+- **Cibo e cura**: ogni gatto ha fame, sete e benessere (le barre compaiono quando lo guardi). Le ciotole si svuotano
+  davvero: riempile con **Crocchette** e **Acqua fresca**. Dai uno **Snack al tonno** con `F` al gatto che guardi.
+  Un gatto felice dà **2 monete** a coccola invece di 1. La **Spazzola** rende le coccole più efficaci
+- **Negozio** (`B`): gomitoli, topolino a carica, scatola di cartone (ci si infilano dentro), cuscino all'erba gatta
+  (rotolate a pancia in su e corse pazze) e **puntatore laser** (`L`: tutti all'inseguimento del puntino)
+- **Pacchetti di carte**: il Pacchetto Classico e il Pacchetto di Natale contengono 19 **gatti speciali** in quattro
+  rarità: Babbo Miao col cappello, Rudolph con corna e naso rosso, Strega, Panda, Bastoncino di zucchero, Fiocco di
+  Neve, Zucca Lanterna, Neon, Arcobaleno, e i leggendari Galassia, Re Mida, Angelo e Lava, con pelo luminoso e
+  scintillante. Ogni gatto trovato entra dalla porta e resta nel locale; i doppioni restituiscono monete
+- **Coccole vive**: una mano accarezza il gatto, che reagisce a modo suo: strofina la testa, impasta con le zampe,
+  inarca la schiena con la coda dritta o si rotola a pancia in su
+- **Lingua**: italiano se il browser è in italiano, altrimenti inglese
+
 | | |
 |---|---|
 | ![Gatti al sole](.github/screenshots/sunbeam.jpg) | ![Due gatti che ti guardano](.github/screenshots/faces.jpg) |
@@ -52,6 +67,9 @@ browser o usa Chrome / Edge.
 | Camminare | `W` `A` `S` `D` (o le frecce) |
 | Più veloce | Tieni premuto `Shift` |
 | Accarezzare | Tieni premuto il click (o `E`) guardando un gatto |
+| Negozio | `B` |
+| Dare uno snack | `F` guardando un gatto |
+| Puntatore laser | `L` (dopo averlo comprato) |
 | Accovacciarsi | Tieni premuto `C` (succede da solo quando accarezzi un gatto a terra) |
 | Menù | `Esc` |
 | Audio sì / no | `M` |
@@ -98,6 +116,7 @@ npm run build
 | [`source/src/cats.js`](source/src/cats.js) | I gatti: forma del corpo, scheletro, pose, camminata, comportamento, e la lista dei gatti con nome, razza e colori |
 | [`source/src/shaders.js`](source/src/shaders.js) | L'aspetto: materiali, luce del sole, pelo e mantelli, occhi, raggi di luce, bloom e colore finale (WGSL) |
 | [`source/src/main.js`](source/src/main.js) | Il renderer, la telecamera, i comandi, le coccole e le monete |
+| [`source/src/shop.js`](source/src/shop.js) | Negozio, cibo e cura, pacchetti di carte, collezione |
 | [`source/src/audio.js`](source/src/audio.js) | Musica, miagolii, fusa e suono della moneta |
 | [`source/src/quality.js`](source/src/quality.js) | I livelli di dettaglio |
 | [`source/src/math.js`](source/src/math.js) | Numeri casuali, matrici e funzioni per costruire le mesh |

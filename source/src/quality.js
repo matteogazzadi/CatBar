@@ -16,3 +16,6 @@ const MAXSH = [30, 20, 12][LV];          // most fur shells on a cat close to th
 const VOLN = [32, 20, 10][LV];           // light shaft steps
 const SSAO = LV < 2;
 const NDUST = [1400, 900, 400][LV];
+// language: Italian if the browser prefers it, English otherwise
+const IT = /^it\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '');
+const L_ = (it, en) => (IT ? it : en);

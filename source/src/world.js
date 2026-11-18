@@ -7,12 +7,11 @@ const RX = 6, RZ = 4.5, RH = 3;
 const SUN = (() => { const l = hypot(0.35, 0.42, 1); return [0.35 / l, 0.42 / l, 1 / l]; })();
 const W = new Mesh();       // everything that never moves
 const SKYM = new Mesh();    // the outdoor backdrop (drawn, but casts no shadow)
-const PROPS = new Mesh(), PROPR = []; // movable props: index ranges
+const PROPS = new Mesh();   // movable props (see below)
 const COL = [];             // colliders: {x, z, r} or {x0, z0, x1, z1}; cat: false = cats walk under it
 const PERCH = [];           // {x, y, z, yaw, sleep}
 const BEDS = [];            // floor beds {x, z}
 const LIGHTS = [];          // [x, y, z, radius, r, g, b, diffuseOnly]
-const TOYS = [];            // yarn balls {x, z, vx, vz, R, r, prop}
 const ARTS = [];             // canvases for the texture array
 
 const C = {
@@ -330,8 +329,8 @@ for (const [x, z] of [[-0.9, 2.3], [3.05, 1.9], [-4.6, -1.3]]) {
 for (const [x, c] of [[0.95, C.white], [1.15, hex(0x7ab0c8)]]) {
   lathe(W, at(x, 0.012, -2.95), [[0, 0], [0.05, 0], [0.075, 0.05], [0.07, 0.052], [0.05, 0.015], [0, 0.015]], 18, c, CERAMIC);
 }
-lathe(W, at(1.15, 0.03, -2.95), [[0.05, 0], [0, 0.0005]], 16, hex(0x6a8a98), GLASS);
-for (let i = 0; i < 12; i++) sphere(W, at(0.95 + rr(-0.03, 0.03), 0.035, -2.95 + rr(-0.03, 0.03)), 0.007, hex(0x7a4a2a), PLAIN, 6);
+// what is in them is a prop (it goes up and down): BOWL.food / BOWL.water from 0 (empty) to 1 (full)
+var BOWL = { food: 0.6, water: 0.7, fx: 0.95, wx: 1.15, z: -2.95 };
 rbox(W, at(1.05, 0.004, -2.95), 0.5, 0.008, 0.3, 0.004, hex(0xc86a5a), PLAIN);
 // toy mice on the floor
 for (const [x, z, a] of [[2.6, 0.4, 1], [-2.2, -1.4, 2.5], [4.6, 1.6, 4]]) {
@@ -363,14 +362,103 @@ pendant(-3.6, 2.1, -3.45); pendant(-0.9, 2.1, -3.45);
 // bounce light from the sun patch on the floor
 LIGHTS.push([-1.4, 0.4, 1.6, 6.5, 2.4, 1.6, 0.9, 1]);
 
-// ---------------------------------------------------------------- yarn balls (they roll)
-for (const [x, z, c] of [[1.0, 0.8, 0xc8304a], [-2.0, 3.4, 0x3a6ab0], [3.3, -1.0, 0xe0a030]]) {
-  const r = 0.045, i0 = PROPS.i.length;
-  sphere(PROPS, M4(), r, hex(c), YARN, 18);
-  const M = M4(); rx(M, 0.7); torus(PROPS, M, r * 0.96, 0.004, shade(hex(c), 0.9), YARN, 24, 5);
-  PROPR.push([i0, PROPS.i.length - i0]);
-  TOYS.push({ x, z, vx: 0, vz: 0, r, R: M4(), k: TOYS.length });
+// ---------------------------------------------------------------- movable props: toys, shop items, accessories, the petting hand
+// Each prop is a range of PROPS indices, drawn with its own matrix. Accessories are modelled in the cat's rest pose and
+// drawn with the skin matrix of the bone they sit on, so they follow the head or the neck.
+const PM = {};
+const prop = (name, f) => { const i0 = PROPS.i.length; f(PROPS); PM[name] = [i0, PROPS.i.length - i0]; };
+const YARNC = [0xc8304a, 0x3a6ab0, 0xe0a030, 0x8a4ac0, 0x30a070, 0xf07aa0];
+YARNC.forEach((c, k) => prop('yarn' + k, (m) => { sphere(m, M4(), 0.045, hex(c), YARN, 18); torus(m, rx(M4(), 0.7), 0.043, 0.004, shade(hex(c), 0.9), YARN, 24, 5); }));
+prop('mouse', (m) => { // wind-up toy mouse, +x forward, sitting on the floor
+  const g = hex(0x9a9aa0), pk = hex(0xf0a0a8);
+  sphere(m, sc(tr(M4(), 0, 0.022, 0), 1.6, 0.85, 1), 0.024, g, FABRIC, 14);
+  sphere(m, tr(M4(), 0.04, 0.026, 0), 0.016, g, FABRIC, 12);
+  for (const s of [-1, 1]) { lathe(m, rx(tr(M4(), 0.034, 0.042, s * 0.013), s * -1.2), [[0, 0], [0.011, 0], [0.011, 0.002], [0, 0.003]], 12, pk, FABRIC); sphere(m, tr(M4(), 0.052, 0.031, s * 0.007), 0.0035, hex(0x111111), CERAMIC, 6); }
+  sphere(m, tr(M4(), 0.057, 0.025, 0), 0.0045, pk, PLAIN, 6);
+  cyl(m, rz(tr(M4(), -0.036, 0.016, 0), PI / 2 + 0.25), 0.0025, 0.08, pk, PLAIN, 5, 0);
+  cyl(m, tr(M4(), -0.005, 0.04, 0), 0.003, 0.012, C.brass, METAL, 6, 0); torus(m, rx(tr(M4(), -0.005, 0.058, 0), PI / 2), 0.008, 0.0025, C.brass, METAL, 12, 5);
+});
+prop('box', (m) => { // an open cardboard box, origin at the floor
+  const c = hex(0xb98a58), w = 0.46, d = 0.36, h = 0.2, t = 0.008;
+  rbox(m, tr(M4(), 0, t / 2, 0), w, t, d, 0.002, shade(c, 0.85), TERRA);
+  for (const s of [-1, 1]) { rbox(m, tr(M4(), s * (w / 2 - t / 2), h / 2, 0), t, h, d, 0.002, c, TERRA); rbox(m, tr(M4(), 0, h / 2, s * (d / 2 - t / 2)), w, h, t, 0.002, c, TERRA); }
+  for (const s of [-1, 1]) { rbox(m, rx(tr(M4(), 0, h, s * d / 2), s * 0.5), w, t, 0.14, 0.002, shade(c, 1.05), TERRA); rbox(m, rz(tr(M4(), s * w / 2, h, 0), -s * 0.5), 0.12, t, d, 0.002, shade(c, 1.05), TERRA); }
+  rbox(m, tr(M4(), 0, 0.12, d / 2 + 0.001), 0.16, 0.05, 0.002, 0.001, hex(0x3a6ab0), PLAIN);
+});
+prop('nip', (m) => { // a catnip cushion
+  rbox(m, tr(M4(), 0, 0.016, 0), 0.12, 0.032, 0.08, 0.014, hex(0x5a9a40), FABRIC);
+  for (let k = 0; k < 3; k++) leaf(m, place(-0.035 + k * 0.03, 0.033, 0, k * 1.1), 0.03, 0.018, hex(0x2f6a28), 0.05, 0.05);
+});
+prop('hand', (m) => { // a hand, palm down, fingers along +x
+  const s = hex(0xe8b48e);
+  rbox(m, M4(), 0.085, 0.024, 0.078, 0.011, s, FABRIC);
+  for (let k = 0; k < 4; k++) { const z = -0.027 + k * 0.018, l = [0.05, 0.06, 0.057, 0.045][k]; cyl(m, rz(tr(M4(), 0.04, -0.002, z), -PI / 2 - 0.12), 0.0085 - k * 0.0004, l, s, FABRIC, 8, 2); }
+  cyl(m, ry(rz(tr(M4(), 0.01, -0.004, 0.038), -PI / 2 - 0.2), -0.9), 0.0095, 0.045, s, FABRIC, 8, 2);
+});
+// accessories, in the cat's rest pose (head bone 3, neck bone 2)
+const ACC = {};
+const acc = (name, bone, f) => { prop('a_' + name, f); ACC[name] = bone; };
+const hatCone = (m, M, r, h, c, bend, tip) => { // a soft cone that flops backwards, with a pompom
+  const n = 6; let x = 0, y = 0;
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n, t1 = (i + 1) / n, a = bend * t1 * t1, l = h / n;
+    const M2 = mat(M, (q) => rz(tr(q, x, y, 0), a));
+    cyl(m, M2, r * (1 - t0) + 0.002, l + 0.002, c, FABRIC, 16, 0, r * (1 - t1) + 0.002);
+    x -= sin(a) * l; y += cos(a) * l;
+  }
+  if (tip) sphere(m, mat(M, (q) => tr(q, x, y, 0)), 0.011, tip, FABRIC, 10);
+};
+acc('santa', 3, (m) => { const M = rz(tr(M4(), 0.205, 0.343, 0), 0.25); hatCone(m, M, 0.037, 0.085, hex(0xc81e28), 0.9, hex(0xffffff)); torus(m, mat(M, (q) => tr(q, 0, 0.004, 0)), 0.036, 0.0095, hex(0xf6f4f0), FABRIC, 24, 8); });
+acc('elf', 3, (m) => { const M = rz(tr(M4(), 0.205, 0.343, 0), 0.2); hatCone(m, M, 0.035, 0.09, hex(0x2a8a3a), 1.3, hex(0xf0c040)); torus(m, mat(M, (q) => tr(q, 0, 0.004, 0)), 0.034, 0.008, hex(0xc81e28), FABRIC, 24, 8); });
+acc('witch', 3, (m) => {
+  const M = rz(tr(M4(), 0.205, 0.345, 0), 0.15), k = hex(0x1c1626);
+  lathe(m, M, [[0, -0.002], [0.075, -0.002], [0.078, 0.002], [0, 0.003]], 28, k, FABRIC);
+  hatCone(m, mat(M, (q) => tr(q, 0, 0.002, 0)), 0.034, 0.1, k, 0.7, null);
+  torus(m, mat(M, (q) => tr(q, 0, 0.012, 0)), 0.031, 0.006, hex(0x7a3ac0), FABRIC, 24, 6);
+});
+acc('crown', 3, (m) => {
+  const M = rz(tr(M4(), 0.207, 0.348, 0), 0.12), g = hex(0xf2c040);
+  cyl(m, M, 0.03, 0.016, g, METAL, 24, 0, 0.032);
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * TAU; lathe(m, mat(M, (q) => tr(q, cos(a) * 0.03, 0.015, -sin(a) * 0.03)), [[0, 0], [0.007, 0], [0, 0.018]], 8, g, METAL); sphere(m, mat(M, (q) => tr(q, cos(a) * 0.032, 0.008, -sin(a) * 0.032)), 0.0045, hex(k & 1 ? 0xe02040 : 0x2060e0), GLASS, 8); }
+});
+acc('halo', 3, (m) => torus(m, rz(tr(M4(), 0.2, 0.42, 0), 0.15), 0.04, 0.0045, hex(0xffe08a), EMIT, 28, 6));
+acc('antlers', 3, (m) => {
+  const b = hex(0x6a4a2a);
+  for (const s of [-1, 1]) {
+    const M = rx(rz(tr(M4(), 0.2, 0.345, s * 0.022), 0.25), -s * 0.35);
+    cyl(m, M, 0.0055, 0.07, b, WOOD, 8, 2, 0.0035);
+    cyl(m, mat(M, (q) => rz(tr(q, 0, 0.035, 0), -0.9)), 0.004, 0.03, b, WOOD, 6, 2, 0.0025);
+    cyl(m, mat(M, (q) => rx(tr(q, 0, 0.05, 0), -s * 0.8)), 0.0035, 0.025, b, WOOD, 6, 2, 0.002);
+  }
+  sphere(m, tr(M4(), 0.298, 0.296, 0), 0.0095, hex(0xff2a2a), EMIT, 10);
+});
+const neckM = () => rz(tr(M4(), 0.168, 0.248, 0), -0.88);
+acc('scarf', 2, (m) => {
+  const c = hex(0xc0202a);
+  torus(m, neckM(), 0.05, 0.013, c, FABRIC, 28, 10);
+  rbox(m, rz(tr(M4(), 0.19, 0.19, 0.03), -0.25), 0.03, 0.07, 0.012, 0.006, shade(c, 0.9), FABRIC);
+});
+acc('bow', 2, (m) => {
+  const c = hex(0xd02040), M = rz(tr(M4(), 0.205, 0.22, 0), -0.5);
+  torus(m, neckM(), 0.049, 0.004, c, FABRIC, 28, 6);
+  for (const s of [-1, 1]) lathe(m, mat(M, (q) => rx(q, s * PI / 2)), [[0, 0], [0.006, 0], [0.018, 0.026], [0, 0.028]], 10, c, FABRIC);
+  sphere(m, M, 0.007, c, FABRIC, 8);
+});
+acc('bell', 2, (m) => {
+  torus(m, neckM(), 0.049, 0.0045, hex(0x2a6ad0), FABRIC, 28, 6);
+  sphere(m, tr(M4(), 0.205, 0.21, 0), 0.009, hex(0xf2c040), METAL, 10);
+});
+
+// three yarn balls to start with; more come from the shop
+prop('kibble', (m) => { for (let i = 0; i < 26; i++) { const a = rr(0, TAU), r = sqrt(rnd()) * 0.045; sphere(m, place(cos(a) * r, 0.03 - r * 0.35 + rr(0, 0.006), sin(a) * r, rr(0, 6)), 0.0075, jitter(hex(0x8a5230), 0.25), PLAIN, 6, 0.75); } });
+prop('water', (m) => lathe(m, M4(), [[0.062, 0], [0, 0.0005]], 18, hex(0x6a8a98), GLASS));
+prop('snack', (m) => { sphere(m, sc(M4(), 1.4, 0.7, 1), 0.012, hex(0xd88a6a), PLAIN, 8); });
+const TOYS = [], BOXES = [], NIPS = [];
+function addToy(kind, x, z, mesh) {
+  const t = { kind, mesh: mesh || kind, x, z, vx: 0, vz: 0, r: kind === 'yarn' ? 0.045 : 0.035, R: M4(), yaw: rr(0, TAU), wind: 0 };
+  TOYS.push(t); return t;
 }
+[[1.0, 0.8], [-2.0, 3.4], [3.3, -1.0]].forEach(([x, z], k) => addToy('yarn', x, z, 'yarn' + k));
 
 // ---------------------------------------------------------------- canvases: neon sign, menu, paintings, door sign
 function mkCanvas(draw) { const c = document.createElement('canvas'); c.width = 1024; c.height = 512; const g = c.getContext('2d'); draw(g, c); ARTS.push(c); }
@@ -391,9 +479,9 @@ mkCanvas((g) => { // 0: neon
 mkCanvas((g) => { // 1: chalkboard menu
   g.fillStyle = '#1e2a26'; g.fillRect(0, 0, 1024, 512);
   for (let i = 0; i < 4000; i++) { g.fillStyle = `rgba(255,255,255,${rnd() * 0.04})`; g.fillRect(rnd() * 1024, rnd() * 512, rr(2, 30), rr(1, 3)); }
-  g.fillStyle = '#f4efe2'; g.font = `bold 64px ${HAND}`; g.textAlign = 'center'; g.fillText('~ Menù ~', 512, 80);
+  g.fillStyle = '#f4efe2'; g.font = `bold 64px ${HAND}`; g.textAlign = 'center'; g.fillText(L_('~ Menù ~', '~ Menu ~'), 512, 80);
   g.font = `38px ${HAND}`; g.textAlign = 'left';
-  const items = [['Espresso', '1,20'], ['Cappuccino', '1,80'], ['Latte & miao', '2,50'], ['Tè matcha', '3,00'], ['Torta del giorno', '3,50'], ['Coccole', 'gratis ♥']];
+  const items = IT ? [['Espresso', '1,20'], ['Cappuccino', '1,80'], ['Latte & miao', '2,50'], ['Tè matcha', '3,00'], ['Torta del giorno', '3,50'], ['Coccole', 'gratis ♥']] : [['Espresso', '1.20'], ['Cappuccino', '1.80'], ['Latte & meow', '2.50'], ['Matcha tea', '3.00'], ['Cake of the day', '3.50'], ['Cuddles', 'free ♥']];
   items.forEach(([a, b], i) => { const y = 150 + i * 55; g.fillStyle = ['#f4efe2', '#ffd1dc', '#cfe8ff'][i % 3]; g.fillText(a, 90, y); g.textAlign = 'right'; g.fillText(b, 930, y); g.textAlign = 'left'; g.fillStyle = 'rgba(244,239,226,.35)'; g.fillRect(420, y - 10, 300, 2); });
   g.strokeStyle = '#f4efe2'; g.lineWidth = 4; g.beginPath(); g.arc(940, 440, 34, 0, TAU); g.moveTo(912, 420); g.lineTo(915, 385); g.lineTo(930, 408); g.moveTo(968, 420); g.lineTo(965, 385); g.lineTo(950, 408); g.stroke();
 });
@@ -418,8 +506,8 @@ mkCanvas((g) => { // 3: impressionist flowers
 });
 mkCanvas((g) => { // 4: door sign
   g.fillStyle = '#f6efe0'; g.fillRect(0, 0, 1024, 512); g.strokeStyle = '#3a5a4a'; g.lineWidth = 18; g.strokeRect(30, 30, 964, 452);
-  g.fillStyle = '#3a5a4a'; g.textAlign = 'center'; g.font = `bold 78px ${HAND}`; g.fillText('Per favore,', 512, 190);
-  g.fillText('non far uscire i gatti!', 512, 300); g.font = `64px ${HAND}`; g.fillStyle = '#c0405a'; g.fillText('♥ grazie ♥', 512, 410);
+  g.fillStyle = '#3a5a4a'; g.textAlign = 'center'; g.font = `bold 78px ${HAND}`; g.fillText(L_('Per favore,', 'Please,'), 512, 190);
+  g.fillText(L_('non far uscire i gatti!', "don't let the cats out!"), 512, 300); g.font = `64px ${HAND}`; g.fillStyle = '#c0405a'; g.fillText(L_('♥ grazie ♥', '♥ thank you ♥'), 512, 410);
 });
 mkCanvas((g) => { // 5: line drawing of a cat face
   g.fillStyle = '#f2e8d8'; g.fillRect(0, 0, 1024, 512); g.strokeStyle = '#2a2420'; g.lineWidth = 7; g.lineCap = 'round';

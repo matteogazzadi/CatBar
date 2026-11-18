@@ -15,7 +15,7 @@ struct G {
   cr: vec4f, cu: vec4f, // camera right / up
   L: array<vec4f, 16>, // 8 lights: position + radius, colour + diffuse-only flag
 };
-struct CatP { c0: vec4f, c1: vec4f, c2: vec4f, c3: vec4f, c4: vec4f };
+struct CatP { c0: vec4f, c1: vec4f, c2: vec4f, c3: vec4f, c4: vec4f, c5: vec4f }; // c5: special coat, glow, sparkle, metal
 @group(0) @binding(0) var<uniform> u: G;
 @group(0) @binding(1) var sRep: sampler;
 @group(0) @binding(2) var sCl: sampler;
@@ -306,6 +306,31 @@ fn coat(p: vec3f, n: vec3f, P: CatP, seed: f32) -> vec3f {
     let spot = ss(.28, .12, dm) * (1. - head * .5);
     col = mix(col, sec, spot * .9 * (1. - ss(.0, .3, -n.y)));
     col = mix(col, mix(base, vec3f(.95, .9, .8), .5), ss(.0, -.6, n.y) * body); // pale belly
+  } else if (typ == 6u) { // galaxy: deep space with nebulae
+    let nb = fb3(p * 9. + seed, 4);
+    col = mix(vec3f(.008, .008, .03), vec3f(.13, .03, .28), ss(.35, .78, nb));
+    col = mix(col, vec3f(.02, .16, .32), ss(.55, .85, fb3(p * 14. + 3., 3)) * .7);
+  } else if (typ == 7u) { // gold
+    col = vec3f(.95, .62, .16) * (.7 + .55 * nz);
+  } else if (typ == 8u) { // rainbow
+    col = hue3(fract(p.x * 2.6 + p.y * 1.4 + nz * .25)) * .75 + .08;
+  } else if (typ == 9u) { // candy cane stripes
+    let st = fract((p.x * 1. + p.y * .9 + abs(p.z) * .4) * 13. + nz * .2);
+    col = mix(base, sec, ss(.45, .55, st) * ss(1., .9, st));
+  } else if (typ == 10u) { // snow and ice
+    col = mix(vec3f(.86, .9, .97), vec3f(.5, .74, .97), ss(.45, .8, nz));
+  } else if (typ == 11u) { // pumpkin: orange ribs
+    let rib = abs(sin(p.z * 110. + p.x * 8.));
+    col = mix(vec3f(.5, .14, .01), vec3f(.95, .4, .04), ss(.0, .8, rib)) * (.85 + .3 * nz);
+  } else if (typ == 12u) { // neon: black velvet, the stripes are light (see coatEm)
+    col = vec3f(.015, .015, .03);
+  } else if (typ == 13u) { // panda
+    let eyeP = ss(.03, .018, length(vec3f((p.x - .258) * .8, (p.y - .314) * 1.1, abs(p.z) - .03)));
+    let band = ss(.0, .03, p.x) * ss(.17, .12, p.x) * ss(.14, .2, p.y);
+    let k = max(max(ss(.335, .345, p.y) * ss(.16, .19, p.x), eyeP), max(ss(.11, .07, p.y) * (1. - tail), band));
+    col = mix(base, sec, k);
+  } else if (typ == 14u) { // lava rock
+    col = vec3f(.035, .028, .026) * (.7 + .6 * nz);
   }
   // darker rims around the eyes
   col *= mix(.5, 1., ss(.0155, .021, length(vec3f(p.x - .254, p.y - .318, abs(p.z) - .027))));
@@ -320,6 +345,29 @@ fn coat(p: vec3f, n: vec3f, P: CatP, seed: f32) -> vec3f {
     col = mix(col, vec3f(.86, .84, .8) * (.93 + .1 * nz), ss(t - .04, t + .04, wp));
   }
   return col;
+}
+fn hue3(x: f32) -> vec3f { return clamp(abs(fract(x + vec3f(0., 2. / 3., 1. / 3.)) * 6. - 3.) - 1., vec3f(0.), vec3f(1.)); }
+// light given off by the special coats (glow > 0)
+fn coatEm(p: vec3f, P: CatP, seed: f32) -> vec3f {
+  let typ = u32(P.c0.w + .5); let k = P.c5.y; let t = u.cam.w;
+  if (k <= 0.) { return vec3f(0.); }
+  var e = P.c1.rgb * .12;
+  if (typ == 6u) { e = vec3f(.35, .12, .7) * ss(.6, .9, fb3(p * 9. + seed, 4)) * .5 + vec3f(.05, .2, .4) * ss(.65, .9, fb3(p * 14. + 3., 3)) * .4; }
+  else if (typ == 11u) { e = vec3f(1., .42, .05) * (.12 + .3 * ss(.6, .95, abs(sin(p.z * 110. + p.x * 8.)))) * (.75 + .25 * sin(t * 2.3)); }
+  else if (typ == 12u) {
+    let sA = sin(p.x * 55. + abs(p.z) * 28. + p.y * 20. - t * 1.2);
+    let sB = sin(p.y * 70. - p.x * 30. + t * .8);
+    e = P.c1.rgb * ss(.86, .97, sA) * 1.6 + vec3f(1., .2, .8) * ss(.9, .98, sB) * 1.2;
+  } else if (typ == 14u) { // glowing cracks between plates of rock
+    let q = p * 30. + seed; let ci = floor(q); var d1 = 9.; var d2 = 9.;
+    for (var x = -1; x <= 1; x++) { for (var y = -1; y <= 1; y++) { for (var z = -1; z <= 1; z++) {
+      let o = vec3f(f32(x), f32(y), f32(z)); let r = o + h33(ci + o) - fract(q); let dd = dot(r, r);
+      if (dd < d1) { d2 = d1; d1 = dd; } else if (dd < d2) { d2 = dd; }
+    } } }
+    let crack = ss(.07, .0, sqrt(d2) - sqrt(d1));
+    e = mix(vec3f(1., .2, .01), vec3f(1., .65, .15), crack * crack) * crack * (.7 + .3 * sin(t * 2. + p.x * 25.)) * 4.;
+  } else if (typ == 10u) { e = vec3f(.4, .7, 1.) * .06; }
+  return e * k;
 }
 
 `;
@@ -343,7 +391,7 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
   let n = normalize((M * vec4f(v.n.xyz, 0.)).xyz);
   let fl = P.c2.w * v.n.w;
   let fd = vec3f(-1., -.55, 0.);
-  let fr = fd - v.n.xyz * dot(v.n.xyz, fd);
+  let fr = fd - v.n.xyz * dot(v.n.xyz, fd) + (vec3f(n3(v.p * 60.), n3(v.p * 60. + 7.), n3(v.p * 60. + 13.)) - .5) * .7;
   let flow = normalize((M * vec4f(fr, 0.)).xyz + n * 1e-3);
   let w = w0 + n * fl * h + (flow * .7 + vec3f(0., -.25, 0.)) * fl * h * h;
   // lighting per vertex: wrapped diffuse for the sun and the lamps, Kajiya-Kay highlight along the strands
@@ -361,7 +409,10 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
     let h2 = normalize(l + vdir); let t2 = dot(T, h2);
     sp += lc.rgb * at * pow(sqrt(max(1. - t2 * t2, 0.)), 60.) * .04 * (1. - lc.w);
   }
-  lit = lit / PI + hemi(n) * (.65 + .35 * sat(n.y + .5));
+  // light caught in the outline of the fur when the sun is behind the cat
+  let rim = pow(1. - abs(dot(n, vdir)), 3.) * sat(-dot(vdir, L) + .2) * (.3 + .7 * h);
+  lit += u.sunc.rgb * sh * rim * 1.4;
+  lit = lit / PI + hemi(n) * (.65 + .35 * sat(n.y + .5)) * (1. + .25 * pow(1. - abs(dot(n, vdir)), 2.));
   var o: CO;
   o.pos = u.vp * vec4f(w, 1.); o.rp = v.p; o.rn = v.n.xyz; o.ci = vec2u(c, s); o.lit = lit; o.sp = sp; o.h = h; o.fur = v.n.w;
   return o;
@@ -379,10 +430,12 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
   // nose leather and inner ears have (almost) no fur
   let nose = ss(.009, .006, length((i.rp - vec3f(.294, .295, 0.)) * vec3f(1.2, 1.6, .85))) * ss(.0, .004, (i.rp.y - .29) + (.012 - abs(i.rp.z)) * .4);
   let earIn = ss(.335, .35, i.rp.y) * ss(.2, .55, rn.x) * ss(.0045, .007, abs(abs(i.rp.z) - .045) + .002) ;
-  var str = 1.;
+  var str = 1.; var spark = 0.;
   if (i.ci.y > 0u) {
     if (i.fur < .02) { discard; }
-    let q = i.rp * DENS + seed;
+    // strands lean into clumps towards their tips, which reads as fluffy tufts
+    let cq = i.rp * 150.; let cc = (floor(cq) + .2 + .6 * h33(floor(cq) + 3.)) / 150.;
+    let q = (i.rp + (cc - i.rp) * h * .45) * DENS + seed;
     let cell = floor(q);
     let r3 = h33(cell);
     let rq = fract(q) - (.2 + .6 * r3);
@@ -394,6 +447,7 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
     let cov = sat(3.14 * rad * rad * (1. - h)) * 1.2;
     a = mix(a, cov, ss(.35, 1.1, fq));
     str = .85 + .3 * r3.x;
+    spark = step(.965, r3.y) * (.5 + .5 * sin(u.cam.w * 3. + r3.x * 40.)) * h;
     ${A2C ? '' : 'if (a < .5) { discard; }'}
     if (a < .01) { discard; }
   }
@@ -406,7 +460,8 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
   col = mix(col, vec3f(.9, .6, .55), earIn * .6);
   col *= mix(.42, 1.06, pow(h, .8)); // depth of the coat: roots are in shadow
   let ao = ssao(i.pos.xy);
-  let c = col * i.lit * mix(.7, 1., ao) + i.sp * (.4 + h);
+  let em = coatEm(i.rp, P, seed) * mix(.4, 1., h) + P.c5.z * spark * mix(vec3f(1., .95, .85), P.c1.rgb + .3, .4) * 2.5;
+  let c = col * i.lit * mix(.7, 1., ao) * (1. - P.c5.w * .55) + i.sp * (.4 + h) * mix(vec3f(1.), col * 9., P.c5.w) + em;
   return vec4f(c, ${A2C ? 'a' : '1.'});
 }
 `;
@@ -451,6 +506,7 @@ struct VO { @builtin(position) pos: vec4f, @location(0) w: vec3f, @location(1) n
   }
   let fr = .04 + .96 * pow(1. - max(dot(n, v), 0.), 5.);
   c += env(reflect(-v, n), .02) * fr * 1.6 * (1. - lidm);
+  c += iris * (1. - pupil) * P.c5.y * .9 * (1. - lidm);
   c += ggx(n, v, u.sun.xyz, .05, vec3f(.04)) * max(dot(n, u.sun.xyz), 0.) * u.sunc.rgb * (1. - lidm) * shadowAt(i.w, n, 0);
   return vec4f(c, 1.);
 }
@@ -495,6 +551,10 @@ struct VO { @builtin(position) pos: vec4f, @location(0) uv: vec2f, @location(1) 
   } else { // hearts rising from a petted cat
     let d = PT[ii - ND];
     let a = d.w;
+    if (a < 0.) { // the laser pointer dot
+      o.pos = u.vp * vec4f(d.xyz + (u.cr.xyz * q.x + u.cu.xyz * q.y) * .014, 1.); o.col = vec4f(9., .4, .3, 0.); o.k = 0u;
+      return o;
+    }
     p = d.xyz + vec3f(sin(a * 5. + f32(ii)) * .03, a * .35, 0.);
     sz = .035 * ss(0., .15, a) * (1. + a * .3);
     o.col = vec4f(vec3f(1.6, .35, .6) * 2.2, 1.) * ss(1.6, 1.1, a) * step(.001, a);

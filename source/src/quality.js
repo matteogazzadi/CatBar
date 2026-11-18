@@ -12,7 +12,7 @@ if (bad && LV < 2) keep('catbar', ++LV);
 { const m = /[?&]lv=(\d)/.exec(location.search); if (m) LV = +m[1]; }
 const AA = LV > 1 ? 1 : 4;               // MSAA samples (fur uses alpha-to-coverage with it)
 const SHADOW = LV ? 2048 : 4096;         // sun shadow map
-const MAXSH = [30, 20, 12][LV];          // most fur shells on a cat close to the camera
+const MAXSH = [42, 24, 12][LV];          // most fur shells on a cat close to the camera
 const VOLN = [32, 20, 10][LV];           // light shaft steps
 const SSAO = LV < 2;
 const NDUST = [1400, 900, 400][LV];

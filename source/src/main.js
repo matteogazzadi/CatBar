@@ -75,7 +75,7 @@ ARTS.forEach((cv, l) => {
   }
 });
 
-const NU = 140, UB = new Float32Array(NU), UBS = new Float32Array(NU);
+const NU = 192, UB = new Float32Array(NU), UBS = new Float32Array(NU);
 const ubo = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST });
 const NMD = 256, MDD = new Float32Array(NMD * 16); ident(MDD.subarray(0, 16)); // prop matrices: 0 = the room
 const DL = []; // props to draw this frame: [mesh name, matrix slot]
@@ -126,7 +126,7 @@ const pWh = mainPipe(mWh, { arrayStride: 16, attributes: [A(0, 0, 'float32x4')] 
 const pPt = mainPipe(mPt, null, { blend: PREM, cull: 'none' });
 const postPipe = (entry, format, blend) => device.createRenderPipeline({ layout: plPost, vertex: { module: mPost, entryPoint: 'vs' },
   fragment: { module: mPost, entryPoint: entry, targets: [{ format, blend }] } });
-const pAO = postPipe('fsAO', 'r8unorm'), pBlur = postPipe('fsBlur', 'r8unorm'), pDown = postPipe('fsDown', HDR), pUp = postPipe('fsUp', HDR, ADD), pComp = postPipe('fsComp', FMT);
+const pAO = postPipe('fsAO', 'r8unorm'), pBlur = postPipe('fsBlur', 'r8unorm'), pDown = postPipe('fsDown', HDR), pUp = postPipe('fsUp', HDR, ADD), pComp = postPipe('fsComp', FMT), pTAA = postPipe('fsTAA', HDR);
 
 // ---------------------------------------------------------------- screen-sized targets
 let RW = 0, RH_ = 0, TX = {}, bgMain, PG = {};
@@ -135,11 +135,11 @@ const postBG = (a, b) => device.createBindGroup({ layout: bglPost, entries: [{ b
 function resize(w, h) {
   w = max(16, w | 0); h = max(16, h | 0);
   if (w === RW && h === RH_) return;
-  RW = w; RH_ = h; canvas.width = w; canvas.height = h;
+  RW = w; RH_ = h; canvas.width = w; canvas.height = h; histOK = false;
   for (const k in TX) (Array.isArray(TX[k]) ? TX[k] : [TX[k]]).forEach((t) => t.destroy());
   const RA = TU.RENDER_ATTACHMENT, TB = TU.TEXTURE_BINDING;
   TX = {
-    hdr: tex(w, h, HDR, RA | TB), depth: tex(w, h, DEPTH, RA | TB),
+    hdr: tex(w, h, HDR, RA | TB), depth: tex(w, h, DEPTH, RA | TB), hist: [tex(w, h, HDR, RA | TB), tex(w, h, HDR, RA | TB)],
     ao0: tex(w >> 1, h >> 1, 'r8unorm', RA | TB), ao: tex(w >> 1, h >> 1, 'r8unorm', RA | TB),
     bl: Array.from({ length: NBL }, (_, i) => tex(max(1, w >> (i + 1)), max(1, h >> (i + 1)), HDR, RA | TB)),
   };
@@ -148,7 +148,8 @@ function resize(w, h) {
   else TX.msd = tex(w, h, DEPTH, RA);
   bgMain = mkBG0(ubo, tShadow, SSAO ? TX.ao : tDummy);
   PG = {
-    ao: postBG(), blur: postBG(TX.ao0), comp: postBG(TX.hdr, TX.bl[0]),
+    ao: postBG(), blur: postBG(TX.ao0), comp: [0, 1].map((k) => postBG(TX.hist[k], TX.bl[0])),
+    taa: [0, 1].map((k) => postBG(TX.hdr, TX.hist[1 - k])), down0: [0, 1].map((k) => postBG(TX.hist[k])),
     down: TX.bl.map((t, i) => postBG(i ? TX.bl[i - 1] : TX.hdr)), up: TX.bl.map((t, i) => postBG(TX.bl[i])),
   };
 }
@@ -344,23 +345,31 @@ function updatePet(dt, fx, fy, fz) {
 }
 
 // ---------------------------------------------------------------- per-frame uniforms
-const V = M4(), Pm = M4(), VPm = M4(), IVP = M4();
-const LT = new Float32Array(64);
-LIGHTS.slice(0, 8).forEach((l, i) => LT.set([l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]], i * 8));
+const V = M4(), Pm = M4(), VPm = M4(), IVP = M4(), VP0 = M4(), PVP = M4();
+let histOK = false, FOCUS = 2;
+const LT = new Float32Array(96);
+LIGHTS.slice(0, 12).forEach((l, i) => LT.set([l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]], i * 8));
 let frame = 0;
 function uniforms(t, fx, fy, fz) {
   const ex = PL.x, ey = PL.eye, ez = PL.z;
   lookAt(V, ex, ey, ez, ex + fx, ey + fy, ez + fz);
   persp(Pm, (68 * PI) / 180, RW / RH_, 0.02, 150);
+  mul4(VP0, Pm, V); // unjittered, for reprojection next frame
+  // temporal anti-aliasing: a different sub-pixel offset every frame (Halton 2,3)
+  const hk = (frame % 8) + 1, hal = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
+  const jx = (hal(hk, 2) - 0.5) * 2 / RW, jy = (hal(hk, 3) - 0.5) * 2 / RH_;
+  Pm[8] += jx; Pm[9] += jy;
   mul4(VPm, Pm, V); inv4(IVP, VPm);
-  UB.set(VPm, 0); UB.set(IVP, 16); UB.set(SVP, 32);
-  UB[48] = ex; UB[49] = ey; UB[50] = ez; UB[51] = t;
-  UB[52] = SUN[0]; UB[53] = SUN[1]; UB[54] = SUN[2]; UB[55] = SSAO ? 1 : 0;
-  UB[56] = SUNC[0]; UB[57] = SUNC[1]; UB[58] = SUNC[2]; UB[59] = 0.016;
-  UB[60] = RW; UB[61] = RH_; UB[62] = 1 / RW; UB[63] = 1 / RH_;
-  UB[64] = 1.45; UB[65] = frame % 64; UB[66] = 1.0; UB[67] = DBG;
-  UB[68] = V[0]; UB[69] = V[4]; UB[70] = V[8]; UB[71] = 0; UB[72] = V[1]; UB[73] = V[5]; UB[74] = V[9]; UB[75] = 0;
-  UB.set(LT, 76);
+  UB.set(VPm, 0); UB.set(IVP, 16); UB.set(SVP, 32); UB.set(histOK ? PVP : VP0, 48);
+  UB[64] = ex; UB[65] = ey; UB[66] = ez; UB[67] = t;
+  UB[68] = SUN[0]; UB[69] = SUN[1]; UB[70] = SUN[2]; UB[71] = SSAO ? 1 : 0;
+  UB[72] = SUNC[0]; UB[73] = SUNC[1]; UB[74] = SUNC[2]; UB[75] = 0.016;
+  UB[76] = RW; UB[77] = RH_; UB[78] = 1 / RW; UB[79] = 1 / RH_;
+  UB[80] = 1.45; UB[81] = frame % 64; UB[82] = 0.8; UB[83] = DBG;
+  UB[84] = V[0]; UB[85] = V[4]; UB[86] = V[8]; UB[87] = 0; UB[88] = V[1]; UB[89] = V[5]; UB[90] = V[9]; UB[91] = 0;
+  UB[92] = jx; UB[93] = jy; UB[94] = histOK ? 1 : 0; UB[95] = FOCUS;
+  UB.set(LT, 96);
+  PVP.set(VP0); histOK = true;
   UBS.set(UB); UBS.set(SVP, 0);
   Q.writeBuffer(ubo, 0, UB); Q.writeBuffer(uboS, 0, UBS);
 }
@@ -452,22 +461,26 @@ function render() {
   p.setPipeline(pWh); p.setVertexBuffer(0, VWH); p.draw(NWH, CATS.length);
   p.setPipeline(pPt); p.draw(6, NDUST + NH);
   p.end();
+  // temporal anti-aliasing into one of two history images
+  const hk = frame & 1;
+  p = e.beginRenderPass({ colorAttachments: [colorAtt(TX.hist[hk].createView(), true)] });
+  p.setPipeline(pTAA); p.setBindGroup(0, bgPre); p.setBindGroup(1, PG.taa[hk]); p.draw(3); p.end();
   // bloom
   for (let i = 0; i < NBL; i++) {
     p = e.beginRenderPass({ colorAttachments: [colorAtt(TX.bl[i].createView(), true)] });
-    p.setPipeline(pDown); p.setBindGroup(0, bgPre); p.setBindGroup(1, PG.down[i]); p.draw(3); p.end();
+    p.setPipeline(pDown); p.setBindGroup(0, bgPre); p.setBindGroup(1, i ? PG.down[i] : PG.down0[hk]); p.draw(3); p.end();
   }
   for (let i = NBL - 1; i > 0; i--) {
     p = e.beginRenderPass({ colorAttachments: [colorAtt(TX.bl[i - 1].createView(), false)] });
     p.setPipeline(pUp); p.setBindGroup(0, bgPre); p.setBindGroup(1, PG.up[i]); p.draw(3); p.end();
   }
   p = e.beginRenderPass({ colorAttachments: [colorAtt((SHOT ? TX.shot : ctx.getCurrentTexture()).createView(), true)] });
-  p.setPipeline(pComp); p.setBindGroup(0, bgMain); p.setBindGroup(1, PG.comp); p.draw(3); p.end();
+  p.setPipeline(pComp); p.setBindGroup(0, bgMain); p.setBindGroup(1, PG.comp[hk]); p.draw(3); p.end();
   Q.submit([e.finish()]);
 }
 
-async function grab() { // ?shot: draw a frame and copy it into the canvas
-  const cp = cos(PL.pitch); draw(sin(PL.yaw) * cp, sin(PL.pitch), -cos(PL.yaw) * cp);
+async function grab(n = 1) { // ?shot: draw n frames (so TAA settles) and copy the last into the canvas
+  const cp = cos(PL.pitch); for (let i = 0; i < n; i++) draw(sin(PL.yaw) * cp, sin(PL.pitch), -cos(PL.yaw) * cp);
   const bpr = (RW * 4 + 255) & ~255, b = device.createBuffer({ size: bpr * RH_, usage: BU.COPY_DST | BU.MAP_READ });
   const e = device.createCommandEncoder(); e.copyTextureToBuffer({ texture: TX.shot }, { buffer: b, bytesPerRow: bpr }, [RW, RH_]); Q.submit([e.finish()]);
   await b.mapAsync(GPUMapMode.READ); const src = new Uint8Array(b.getMappedRange()), img = new ImageData(RW, RH_);
@@ -489,6 +502,8 @@ function tick(dt) {
   for (const c of CATS) updateCat(c, dt, simT);
   updateToys(dt);
   updatePet(dt, fx, fy, fz);
+  // focus for the depth of field: the cat you look at, otherwise where the view meets the floor
+  { const tc = LV < 2 && (PET.on ? PET.cat : lastTarget); if (tc) { const want = hypot(tc.sp[1][0] - PL.x, tc.sp[1][1] - PL.eye, tc.sp[1][2] - PL.z); FOCUS = FOCUS > 0 ? damp(FOCUS, want, 4, dt) : want; } else FOCUS = 0; }
   // the laser dot lands where you look on the floor
   if (LASER.on && fy < -0.05) {
     const t = -PL.eye / fy; LASER.x = clamp(PL.x + fx * t, -RX + 0.2, RX - 0.2); LASER.z = clamp(PL.z + fz * t, -RZ + 0.2, RZ - 0.2);
@@ -503,7 +518,7 @@ function draw(fx, fy, fz) {
   for (const c of CATS) {
     const d = hypot(c.sp[1][0] - PL.x, c.sp[1][1] - PL.eye, c.sp[1][2] - PL.z); c.dcam = d;
     c.vis = sphereVisible(c.sp[1][0], c.sp[1][1], c.sp[1][2], 0.45 * c.scale);
-    const k = min(1, (1.3 * c.scale) / max(d, 0.3)) * (c.fur > 0.02 ? 1.4 : 1);
+    const k = min(1, (1.6 * c.scale) / max(d, 0.3)) * (c.fur > 0.02 ? 1.35 : 1);
     c.shells = clamp(round(MAXSH * k), 6, 60); c.P[12] = c.shells;
   }
   Q.writeBuffer(bnBuf, 0, BND, 0, CATS.length * NB * 16); Q.writeBuffer(cpBuf, 0, CPD, 0, CATS.length * 24); Q.writeBuffer(ptBuf, 0, PTD);

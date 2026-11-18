@@ -6,14 +6,15 @@
 
 const W_COMMON = /*wgsl*/`
 struct G {
-  vp: mat4x4f, ivp: mat4x4f, svp: mat4x4f,
+  vp: mat4x4f, ivp: mat4x4f, svp: mat4x4f, pvp: mat4x4f, // pvp: last frame's unjittered view-projection
   cam: vec4f,   // camera position, time
   sun: vec4f,   // direction to the sun, ssao on
   sunc: vec4f,  // sun colour, light shaft density
   scr: vec4f,   // render size, 1 / size
   misc: vec4f,  // exposure, frame, ambient, -
   cr: vec4f, cu: vec4f, // camera right / up
-  L: array<vec4f, 16>, // 8 lights: position + radius, colour + diffuse-only flag
+  jit: vec4f,   // sub-pixel jitter (NDC), history reset, focus distance
+  L: array<vec4f, 24>, // 12 lights: position + radius, colour + diffuse-only flag
 };
 struct CatP { c0: vec4f, c1: vec4f, c2: vec4f, c3: vec4f, c4: vec4f, c5: vec4f }; // c5: special coat, glow, sparkle, metal
 @group(0) @binding(0) var<uniform> u: G;
@@ -89,7 +90,7 @@ fn shadeSurf(w: vec3f, n: vec3f, v: vec3f, alb: vec3f, rough: f32, f0: vec3f, ao
     c += (alb / PI * max(ndl, 0.) + ggx(n, v, L, rough, f0) * max(ndl, 0.)) * u.sunc.rgb * sh;
     c += alb * trans * max(-ndl, 0.) * u.sunc.rgb * sh * vec3f(.5, .6, .2);
   }
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 12; i++) {
     let lp = u.L[i * 2]; let lc = u.L[i * 2 + 1];
     let d = lp.xyz - w; let d2 = dot(d, d); let l = d * inverseSqrt(d2);
     let nl = max(dot(n, l), 0.); let at = latt(d2, lp.w);
@@ -372,7 +373,7 @@ fn coatEm(p: vec3f, P: CatP, seed: f32) -> vec3f {
 
 `;
 const W_CAT = (A2C) => W_COMMON + W_COAT + /*wgsl*/`
-const DENS = 640.;
+const DENS = 820.;
 struct CI { @location(0) p: vec3f, @location(1) n: vec4f, @location(2) b: vec4u, @location(3) wt: vec4f };
 struct CO {
   @builtin(position) pos: vec4f, @location(0) rp: vec3f, @location(1) rn: vec3f, @location(2) @interpolate(flat) ci: vec2u,
@@ -402,7 +403,7 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
   let T = normalize(n + flow * .9);
   let hv = normalize(L + vdir); let th = dot(T, hv);
   var sp = u.sunc.rgb * sh * pow(sqrt(max(1. - th * th, 0.)), 70.) * .05 * sat(dot(n, L) + .3);
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 12; i++) {
     let lp = u.L[i * 2]; let lc = u.L[i * 2 + 1];
     let d = lp.xyz - w; let d2 = dot(d, d); let l = d * inverseSqrt(d2); let at = latt(d2, lp.w);
     lit += lc.rgb * at * wrapL(dot(n, l));
@@ -500,7 +501,7 @@ struct VO { @builtin(position) pos: vec4f, @location(0) w: vec3f, @location(1) n
   alb = mix(alb, mix(vec3f(.02), skin, ss(.05, .2, max(p.y - top, bot - p.y))), lidm);
   // glossy cornea
   var c = alb * (hemi(n) + u.sunc.rgb * max(dot(n, u.sun.xyz), 0.) * .3) * .9;
-  for (var k = 0; k < 8; k++) {
+  for (var k = 0; k < 12; k++) {
     let lp = u.L[k * 2]; let lc = u.L[k * 2 + 1]; let d = lp.xyz - i.w; let d2 = dot(d, d); let l = d * inverseSqrt(d2);
     c += (alb / PI * max(dot(n, l), 0.) + ggx(n, v, l, .06, vec3f(.04)) * max(dot(n, l), 0.) * (1. - lidm)) * latt(d2, lp.w) * lc.rgb * (1. - lc.w * .5);
   }
@@ -674,12 +675,81 @@ fn aces(x: vec3f) -> vec3f {
   let v = a * x; let r = (v * (v + .0245786) - .000090537) / (v * (.983729 * v + .4329510) + .238081);
   return clamp(b * r, vec3f(0.), vec3f(1.));
 }
+// temporal anti-aliasing: blend with last frame's image, reprojected, clamped to this pixel's neighbourhood
+fn lum(c: vec3f) -> f32 { return dot(c, vec3f(.2126, .7152, .0722)); }
+@fragment fn fsTAA(@builtin(position) fc: vec4f) -> @location(0) vec4f {
+  let ip = vec2i(fc.xy); let sz = vec2i(textureDimensions(tA));
+  let cur = textureLoad(tA, ip, 0).rgb;
+  if (u.jit.z < .5) { return vec4f(cur, 1.); }
+  var m1 = vec3f(0.); var m2 = vec3f(0.);
+  for (var y = -1; y <= 1; y++) { for (var x = -1; x <= 1; x++) {
+    var q = textureLoad(tA, clamp(ip + vec2i(x, y), vec2i(0), sz - 1), 0).rgb; q = q / (1. + lum(q));
+    m1 += q; m2 += q * q;
+  } }
+  let mean = m1 / 9.; let sd = sqrt(max(m2 / 9. - mean * mean, vec3f(0.)));
+  let d = textureLoad(tD, ip, 0);
+  let pc = u.pvp * vec4f(wpos(fc.xy, d), 1.);
+  let puv = (pc.xy / pc.w) * vec2f(.5, -.5) + .5;
+  if (any(puv < vec2f(0.)) || any(puv > vec2f(1.))) { return vec4f(cur, 1.); }
+  var h = textureSampleLevel(tB, sCl, puv, 0.).rgb; h = h / (1. + lum(h));
+  h = clamp(h, mean - sd * 1.3, mean + sd * 1.3);
+  let ct = cur / (1. + lum(cur));
+  let o = mix(ct, h, .9);
+  return vec4f(o / max(1. - lum(o), 1e-3), 1.);
+}
+
 @fragment fn fsComp(@builtin(position) fc: vec4f) -> @location(0) vec4f {
   let uv = fc.xy * u.scr.zw;
   var c = textureSampleLevel(tA, sCl, uv, 0.).rgb;
   let bl = textureSampleLevel(tB, sCl, uv, 0.).rgb;
+  let d0 = textureLoad(tD, vec2i(fc.xy), 0);
+  let p0 = wpos(fc.xy, d0);
+  let dist0 = select(length(p0 - u.cam.xyz), 60., d0 >= 1.);
+  // depth of field: a soft disc blur that grows away from the focus distance
+  // a little sharpening after TAA
+  var nb = vec3f(0.);
+  for (var k = 0; k < 4; k++) { let o = vec2f(f32((k & 1) * 2 - 1), f32((k >> 1u) * 2 - 1)) * .5; nb += textureSampleLevel(tA, sCl, uv + o * u.scr.zw * 1.5, 0.).rgb; }
+  c = max(c + (c - nb * .25) * .35, vec3f(0.));
+  let coc = clamp(abs(dist0 - u.jit.w) / max(dist0, .3) * 3., 0., 6.) * u.scr.x / 1600. * ss(3.5, 1.6, u.jit.w);
+  if (coc > .8 && u.jit.w > 0.) {
+    var acc = c; var wsum = 1.;
+    for (var k = 0; k < 12; k++) {
+      let a = f32(k) * 2.39996; let r = sqrt((f32(k) + .5) / 12.) * coc;
+      let su = uv + vec2f(cos(a), sin(a)) * r * u.scr.zw;
+      let sd = textureLoad(tD, vec2i(clamp(su, vec2f(0.), vec2f(.999)) * u.scr.xy), 0);
+      let sdist = select(length(wpos(su * u.scr.xy, sd) - u.cam.xyz), 60., sd >= 1.);
+      let wt = select(1., .2, sdist < dist0 - .5 && abs(sdist - u.jit.w) < .3); // keep sharp things in front from bleeding
+      acc += textureSampleLevel(tA, sCl, su, 0.).rgb * wt; wsum += wt;
+    }
+    c = acc / wsum;
+  }
+  // glossy reflections on the varnished floor, traced in screen space
+  if (d0 < 1. && p0.y < .004 && abs(p0.x) < 5.95 && abs(p0.z) < 4.45) {
+    let v = normalize(p0 - u.cam.xyz); let r = vec3f(v.x, -v.y, v.z);
+    let fres = .04 + .96 * pow(1. - max(-v.y, 0.), 5.);
+    var refl = env(r, .35) * .5; var t = .04;
+    let jit = ign(fc.xy + u.misc.y * 3.);
+    for (var i = 0; i < 28; i++) {
+      t *= 1.13;
+      let p = p0 + r * t * (1. + jit * .13);
+      let cp = u.vp * vec4f(p, 1.);
+      let su = (cp.xy / cp.w) * vec2f(.5, -.5) + .5;
+      if (any(su < vec2f(0.)) || any(su > vec2f(1.)) || cp.w < 0.) { break; }
+      let sd = textureLoad(tD, vec2i(su * u.scr.xy), 0);
+      let sp = wpos(su * u.scr.xy, sd);
+      let dd = length(p - u.cam.xyz) - length(sp - u.cam.xyz);
+      if (dd > .01 && dd < .3) {
+        let edge = ss(0., .08, min(min(su.x, 1. - su.x), min(su.y, 1. - su.y)));
+        var hc = vec3f(0.);
+        for (var k = 0; k < 4; k++) { hc += textureSampleLevel(tA, sCl, su + (vec2f(f32(k & 1), f32(k >> 1u)) - .5) * u.scr.zw * (2. + t * 4.), 0.).rgb; }
+        refl = mix(refl, hc * .25, edge * ss(4., 2., t));
+        break;
+      }
+    }
+    c += refl * fres * .55;
+  }
   if (u.misc.w > .5) { // debug views
-    let dd = textureLoad(tD, vec2i(fc.xy), 0);
+    let dd = d0;
     if (u.misc.w < 1.5) { return vec4f(c * .3, 1.); }
     if (u.misc.w < 2.5) { return vec4f(vec3f(fract(length(wpos(fc.xy, dd) - u.cam.xyz))), 1.); }
     return vec4f(vec3f(textureLoad(tAO, vec2i(fc.xy * .5), 0).r), 1.);

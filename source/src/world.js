@@ -359,8 +359,13 @@ pendant(-3.6, 2.1, -3.45); pendant(-0.9, 2.1, -3.45);
     if (k2 > k) { const M = M4(); tr(M, x, y, RZ - 0.06); rz(M, -PI / 2 + atan2(y2 - y, 0.18)); cyl(W, M, 0.0025, hypot(0.18, y2 - y), C.black, PLAIN, 4, 0); }
   }
 }
-// bounce light from the sun patch on the floor
-LIGHTS.push([-1.4, 0.4, 1.6, 6.5, 2.4, 1.6, 0.9, 1]);
+// light bouncing off the sun patches: one soft, diffuse-only light over the middle of each patch on the floor,
+// tinted by the oak it bounces off (a cheap stand-in for global illumination)
+for (const c of WIN) {
+  const t = 1.6 / SUN[1], x = clamp(c - SUN[0] * t, -RX + 0.5, RX - 0.5), z = clamp(RZ - SUN[2] * t, -RZ + 0.5, RZ - 0.5);
+  LIGHTS.push([x, 0.35, z, 6.5, 1.5, 0.95, 0.5, 1]);
+}
+LIGHTS.push([0, 2.2, RZ - 0.6, 6, 0.5, 0.55, 0.6, 1]); // cool skylight spilling in through the windows
 
 // ---------------------------------------------------------------- movable props: toys, shop items, accessories, the petting hand
 // Each prop is a range of PROPS indices, drawn with its own matrix. Accessories are modelled in the cat's rest pose and

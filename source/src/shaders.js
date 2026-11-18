@@ -14,6 +14,7 @@ struct G {
   misc: vec4f,  // exposure, frame, ambient, -
   cr: vec4f, cu: vec4f, // camera right / up
   jit: vec4f,   // sub-pixel jitter (NDC), history reset, focus distance
+  env2: vec4f,  // daylight 0-1, rain 0-1, snow 0-1, photo filter
   L: array<vec4f, 24>, // 12 lights: position + radius, colour + diffuse-only flag
 };
 struct CatP { c0: vec4f, c1: vec4f, c2: vec4f, c3: vec4f, c4: vec4f, c5: vec4f }; // c5: special coat, glow, sparkle, metal
@@ -67,7 +68,7 @@ fn latt(d2: f32, r: f32) -> f32 { let x = d2 / (r * r); let f = sat(1. - x * x);
 fn env(r: vec3f, rough: f32) -> vec3f {
   var c = mix(vec3f(.045, .028, .018), vec3f(.11, .085, .06), ss(-.6, .8, r.y));
   let win = ss(.3, .7, r.z) * ss(-.3, .0, r.y) * (1. - ss(.35, .75, r.y));
-  c += vec3f(2.4, 2.0, 1.55) * win * mix(1., .18, rough);
+  c += mix(vec3f(.12, .16, .3), vec3f(2.4, 2.0, 1.55) * (1. - .45 * max(u.env2.y, u.env2.z)), u.env2.x) * win * mix(1., .18, rough);
   return c;
 }
 fn hemi(n: vec3f) -> vec3f { return mix(vec3f(.42, .28, .18), vec3f(.30, .29, .29), ss(-.7, .9, n.y)) * u.misc.z; }
@@ -121,21 +122,43 @@ struct VO { @builtin(position) pos: vec4f, @location(0) w: vec3f, @location(1) n
 
 // the view out of the windows: a sunny street with trees, overexposed like a real interior photo
 fn outdoor(d: vec3f) -> vec3f {
-  let y = d.y;
-  var c = mix(vec3f(1.25, 1.0, .72), vec3f(.42, .62, 1.0), ss(.0, .55, y)) * 3.2;
-  let s = max(dot(d, u.sun.xyz), 0.);
-  c += u.sunc.rgb * (.06 * pow(s, 6.) + 3. * pow(s, 600.));
+  let y = d.y; let day = u.env2.x; let rain = u.env2.y; let snow = u.env2.z; let t = u.cam.w;
   let az = atan2(d.x, d.z);
+  // sky: blue day, orange around a low sun, deep blue night with stars, grey when it rains or snows
+  let low = ss(.45, .05, u.sun.y) * day;
+  var sky = mix(vec3f(1.25, 1.0, .72), vec3f(.42, .62, 1.0), ss(.0, .55, y)) * 3.2;
+  sky = mix(sky, mix(vec3f(2.6, 1.1, .45), vec3f(.55, .45, .8), ss(.0, .5, y)) * 2.2, low);
+  let night = mix(vec3f(.05, .07, .16), vec3f(.008, .012, .04), ss(.0, .6, y)) + vec3f(.9, .9, 1.) * step(.997, h21(floor(vec2f(az * 260., y * 260.)))) * ss(.05, .2, y) * (1. - rain);
+  var c = mix(night, sky, day);
+  let grey = mix(vec3f(.05, .06, .08), vec3f(1.5, 1.55, 1.65), day);
+  c = mix(c, grey, max(rain, snow) * .85);
+  let s = max(dot(d, u.sun.xyz), 0.);
+  c += u.sunc.rgb * (.06 * pow(s, 6.) + 3. * pow(s, 600.)) * day;
   // tree canopies across the street, lit from behind, with bright gaps
   let tn = fb2(vec2f(az * 7., y * 9.), 4);
   let top = .2 + .18 * fb2(vec2f(az * 3., 1.7), 3);
   let tree = ss(top, top - .05, y + (tn - .5) * .12) * ss(-.12, -.02, y);
-  let leafc = mix(vec3f(.10, .19, .05), vec3f(.55, .62, .2), ss(.55, .8, tn)) * 2.2;
+  var leafc = mix(vec3f(.10, .19, .05), vec3f(.55, .62, .2), ss(.55, .8, tn)) * 2.2 * mix(.04, 1., day);
+  leafc = mix(leafc, vec3f(1.6, 1.65, 1.7) * mix(.08, 1., day), snow * ss(.45, .6, tn)); // snow on the trees
   c = mix(c, leafc, tree * ss(.35, .5, tn));
-  // street and sidewalk below
+  // street and sidewalk below, with street lamps glowing at night
   let g = ss(-.02, -.1, y);
-  let st = mix(vec3f(1.35, 1.2, 1.0), vec3f(.55, .5, .45), ss(-.25, -.35, y)) * (.85 + .3 * n2(vec2f(az * 30., y * 40.)));
+  var st = mix(vec3f(1.35, 1.2, 1.0), vec3f(.55, .5, .45), ss(-.25, -.35, y)) * (.85 + .3 * n2(vec2f(az * 30., y * 40.)));
+  st = st * mix(.05, 1., day) * (1. - .35 * rain) + vec3f(1.2, .7, .3) * (1. - day) * .25 * ss(.6, .9, n2(vec2f(az * 6., 3.)));
+  st = mix(st, vec3f(1.7, 1.75, 1.8) * mix(.1, 1., day), snow);
   c = mix(c, st * 1.6, g);
+  // falling rain streaks and snow flakes
+  if (rain > .01) {
+    let q = vec2f(az * 180., y * 6. + t * 9.);
+    let r = h21(floor(q));
+    c += vec3f(.6, .65, .75) * mix(.15, 1., day) * rain * step(.92, r) * ss(.5, .0, abs(fract(q.x) - .5)) * fract(q.y + r * 7.);
+  }
+  if (snow > .01) {
+    let q = vec2f(az * 70. + sin(t * .7 + y * 9.) * .6, y * 70. + t * 4.);
+    let cell = floor(q); let r = h21(cell);
+    let p = fract(q) - .5 - (vec2f(h21(cell + 3.), h21(cell + 7.)) - .5) * .5;
+    c += vec3f(1.6) * mix(.15, 1., day) * snow * step(.6, r) * ss(.18, .08, length(p));
+  }
   return c;
 }
 
@@ -781,6 +804,12 @@ fn lum(c: vec3f) -> f32 { return dot(c, vec3f(.2126, .7152, .0722)); }
   c = aces(c);
   // warm grade, vignette and a little grain
   c = pow(c, vec3f(1.02, 1., .98));
+  // photo mode filters: 1 warm, 2 black and white, 3 vintage, 4 dreamy
+  let fm = u.env2.w; let lu = dot(c, vec3f(.2126, .7152, .0722));
+  if (fm > .5 && fm < 1.5) { c = clamp(c * vec3f(1.1, 1., .82) + vec3f(.02, .01, 0.), vec3f(0.), vec3f(1.)); }
+  else if (fm > 1.5 && fm < 2.5) { c = vec3f(pow(lu, .95)) * 1.05; }
+  else if (fm > 2.5 && fm < 3.5) { c = mix(vec3f(lu), vec3f(lu * 1.07 + .05, lu * .95 + .03, lu * .78), .85) * .95; let q2 = uv - .5; c *= 1. - dot(q2, q2) * .9; c += (ign(fc.xy * 1.3 + u.misc.y) - .5) * .05; }
+  else if (fm > 3.5) { c = mix(c, vec3f(1., .85, .95), .12) + bl * .25; c = pow(c, vec3f(.9)); }
   let q = uv - .5;
   c *= 1. - .35 * dot(q, q) * 1.8;
   c += (ign(fc.xy + u.misc.y * 7.) - .5) * .012;

@@ -155,7 +155,7 @@ function renderShop() {
   } else if (shopTab === 'wear') {
     if (!wearCat) wearCat = PET.cat || lastTarget || CATS[0];
     const worn = SAVE.wear[wearCat.name] || [];
-    const opts = CATS.map((c) => `<option value=${c.i} ${c === wearCat ? 'selected' : ''}>${esc_(c.name)} · ${esc_(c.breed)}</option>`).join('');
+    const opts = CATS.filter((c) => !c.gone).map((c) => `<option value=${c.i} ${c === wearCat ? 'selected' : ''}>${esc_(c.name)} ${hearts(c)} · ${esc_(c.breed)}</option>`).join('');
     B.innerHTML = `<p class=count><label>${L_('Chi vesti?', 'Who are you dressing?')} <select id=wearSel>${opts}</select></label> <small>${L_('Tocca un accessorio tuo per metterlo o toglierlo. Uno per testa, viso, collo e corpo.', 'Tap one of yours to put it on or take it off. One each for head, face, neck and body.')}</small></p><div class="grid wear">` + WEAR.map(([id, slot, price, icon, it, en]) => {
       const own = SAVE.acc.includes(id), on = worn.includes(id);
       const btn = own ? `<button data-wear=${id} class=${on ? 'on' : ''}>${on ? L_('Togli', 'Take off') : L_('Metti', 'Put on')}</button>`
@@ -203,7 +203,7 @@ function toggleWear(id) {
   if (!wearCat || !SAVE.acc.includes(id)) return;
   let worn = SAVE.wear[wearCat.name] || [];
   if (worn.includes(id)) worn = worn.filter((x) => x !== id);
-  else { worn = worn.filter((x) => slotOf(x) !== slotOf(id)); worn.push(id); wearCat.joy = min(1, wearCat.joy + 0.1); wearCat.meowT = 0.3; }
+  else { worn = worn.filter((x) => slotOf(x) !== slotOf(id)); worn.push(id); wearCat.joy = min(1, wearCat.joy + 0.1); wearCat.meowT = 0.3; addLove(wearCat, 0.1); }
   SAVE.wear[wearCat.name] = worn; saveItems(); refreshAcc(wearCat); renderShop();
 }
 function openPack(id) {

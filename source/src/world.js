@@ -72,7 +72,7 @@ for (const c of WIN) {
   for (const s of [-1, 1]) curtain(c + s * (WW + 0.22), RZ - 0.12, 0.42, C.cream);
 }
 PERCH.push({ x: 0.3, y: WY0 + 0.02, z: RZ - 0.06, yaw: 0, sleep: 0.6 }, { x: -3.8, y: WY0 + 0.02, z: RZ - 0.06, yaw: PI, sleep: 0.3 });
-box(SKYM, at(0, 4, 0), 80, 40, 80, C.white, SKY);
+box(SKYM, at(0, 4, 0), 80, 40, 80, C.white, OUTDOOR);
 for (let i = 0; i < SKYM.i.length; i += 3) { const t = SKYM.i[i]; SKYM.i[i] = SKYM.i[i + 1]; SKYM.i[i + 1] = t; } // seen from inside
 
 // ---------------------------------------------------------------- the door (closed: the cats must stay in)
@@ -80,7 +80,7 @@ for (let i = 0; i < SKYM.i.length; i += 3) { const t = SKYM.i[i]; SKYM.i[i] = SK
   const x = RX - 0.03, z = 3.1;
   rbox(W, at(x, 1.08, z), 0.05, 2.16, 0.98, 0.006, C.green, PAINT);
   for (const [y, h] of [[0.5, 0.62]]) rbox(W, at(x - 0.03, y, z), 0.02, h, 0.7, 0.008, shade(C.green, 1.1), PAINT);
-  card(W, at(x - 0.03, 1.55, z, -PI / 2), 0.66, 0.72, C.white, SKY, false);
+  card(W, at(x - 0.03, 1.55, z, -PI / 2), 0.66, 0.72, C.white, OUTDOOR, false);
   for (const s of [-1, 1]) rbox(W, at(x - 0.045, 1.55, z + s * 0.35), 0.04, 0.8, 0.05, 0.006, C.green, PAINT);
   for (const s of [-1, 1]) rbox(W, at(x - 0.045, 1.55 + s * 0.38, z), 0.04, 0.05, 0.74, 0.006, C.green, PAINT);
   sphere(W, at(x - 0.07, 1.0, z - 0.4), 0.03, C.brass, METAL, 12);
@@ -146,7 +146,7 @@ for (let i = 0; i < SKYM.i.length; i += 3) { const t = SKYM.i[i]; SKYM.i[i] = SK
   }
   // neon sign over the bar, chalkboard menu to the right
   card(W, at(-2.1, 2.1, -RZ + 0.03), 1.8, 0.9, [0, 1, 0], ART, false);
-  LIGHTS.push([-2.1, 2.0, -4.05, 2.8, 1.6, 0.25, 0.75, 1]);
+  LIGHTS.push([-2.1, 2.0, -4.05, 2.8, 1.6, 0.25, 0.75, 1, 'lamp']);
   rbox(W, at(2.2, 1.75, -RZ + 0.02), 1.5, 0.85, 0.035, 0.008, C.walnut, WOOD);
   card(W, at(2.2, 1.75, -RZ + 0.04), 1.38, 0.73, [1 / 255, 0, 0], ART, false);
   col({ x0: x0 - 0.05, z0: -RZ, x1: x1 + 0.05, z1: zf + 0.18, cat: true });
@@ -254,7 +254,7 @@ for (const [x, z] of TABLES) {
   lathe(W, at(5.55, 1.3, -1.9), [[0.24, 0], [0.24, 0.005], [0.15, 0.32], [0.15, 0.325]], 24, C.cream, FABRIC);
   lathe(W, at(5.55, 1.3, -1.9), [[0.15, 0.32], [0.235, 0.004]], 24, shade(C.cream, 1.2), FABRIC);
   sphere(W, at(5.55, 1.42, -1.9), 0.045, hex(0xffd9a0), EMIT, 12);
-  LIGHTS.push([5.55, 1.42, -1.9, 4.5, 2.6, 1.6, 0.85, 0]);
+  LIGHTS.push([5.55, 1.42, -1.9, 4.5, 2.6, 1.6, 0.85, 0, 'lamp']);
   col({ x: 5.55, z: -1.9, r: 0.26, cat: true });
 }
 // paintings
@@ -347,7 +347,7 @@ function pendant(x, y, z) {
   lathe(W, at(x, y + 0.004, z), prof.map(([r, h]) => [r * 0.97, h]).reverse(), 28, hex(0xf3e6c8), PLAIN);
   torus(W, at(x, y, z), 0.208, 0.006, C.brass, METAL, 28, 6);
   sphere(W, at(x, y + 0.06, z), 0.05, hex(0xffd9a0), EMIT, 14);
-  LIGHTS.push([x, y + 0.03, z, 7, 4.2, 2.5, 1.15, 0]);
+  LIGHTS.push([x, y + 0.03, z, 7, 4.2, 2.5, 1.15, 0, 'lamp']);
 }
 for (const [x, z] of TABLES) pendant(x, 2.05, z);
 pendant(-3.6, 2.1, -3.45); pendant(-0.9, 2.1, -3.45);
@@ -363,9 +363,9 @@ pendant(-3.6, 2.1, -3.45); pendant(-0.9, 2.1, -3.45);
 // tinted by the oak it bounces off (a cheap stand-in for global illumination)
 for (const c of WIN) {
   const t = 1.6 / SUN[1], x = clamp(c - SUN[0] * t, -RX + 0.5, RX - 0.5), z = clamp(RZ - SUN[2] * t, -RZ + 0.5, RZ - 0.5);
-  LIGHTS.push([x, 0.35, z, 6.5, 1.5, 0.95, 0.5, 1]);
+  LIGHTS.push([x, 0.35, z, 6.5, 1.5, 0.95, 0.5, 1, 'bounce', c]);
 }
-LIGHTS.push([0, 2.2, RZ - 0.6, 6, 0.5, 0.55, 0.6, 1]); // cool skylight spilling in through the windows
+LIGHTS.push([0, 2.2, RZ - 0.6, 6, 0.5, 0.55, 0.6, 1, 'sky']); // cool skylight spilling in through the windows
 
 // ---------------------------------------------------------------- movable props: toys, shop items, accessories, the petting hand
 // Each prop is a range of PROPS indices, drawn with its own matrix. Accessories are modelled in the cat's rest pose and

@@ -122,7 +122,7 @@ class Mesh {
 
 // material ids (must match the switch in shaders.js)
 const FLOOR = 0, WALL = 1, BRICK = 2, WOOD = 3, FABRIC = 4, SISAL = 5, PLUSH = 6, CERAMIC = 7, METAL = 8, EMIT = 9,
-  LEAF = 10, RUG = 11, SKY = 12, MARBLE = 13, ART = 14, GLASS = 15, YARN = 16, PLAIN = 17, TERRA = 18, PAINT = 19, CEIL = 20;
+  LEAF = 10, RUG = 11, OUTDOOR = 12, MARBLE = 13, ART = 14, GLASS = 15, YARN = 16, PLAIN = 17, TERRA = 18, PAINT = 19, CEIL = 20;
 
 // rounded box w*h*d centred at the origin of M, edge radius r (0 = sharp, flat normals)
 function rbox(m, M, w, h, d, r, col, mt, rs = 3) {

@@ -60,7 +60,7 @@ function finish(res) {
   msg += ` +${coinsWon} ` + L_('monete', 'coins');
   const rare = WEAR.filter((w) => !w[2] && !SAVE.acc.includes(w[0]));
   if (win && rare.length && rnd() < 0.45) { const w = pick(rare); SAVE.acc.push(w[0]); saveItems(); msg += ` · ${L_('Nuovo accessorio', 'New item')}: ${w[3]} ${IT ? w[4] : w[5]} (${L_('in Vestiti', 'in Clothes')})`; }
-  if (c) { c.joy = min(1, c.joy + (win ? 0.15 : 0.3)); c.meowT = 0.3; }
+  if (c) { c.joy = min(1, c.joy + (win ? 0.15 : 0.3)); c.meowT = 0.3; addLove(c, 0.4); }
   $('gR').textContent = msg; $('gAgain').hidden = win;
   if (typeof coinSound === 'function') coinSound();
 }

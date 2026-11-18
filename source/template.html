@@ -176,6 +176,29 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 .card.big b { font-size: 1.15em; }
 .card.big em { font-size: .7em; font-style: normal; color: #ffe27a; display: flex; align-items: center; gap: .3em; }
 .card.big em .coin { width: 1em; height: 1em; }
+#clk { font-size: .62em; letter-spacing: .05em; color: #ffd9b0; white-space: nowrap; }
+#camBtn { position: relative; display: none; width: 1.9em; height: 1.9em; margin: -.2em -.6em -.2em .9em; padding: 0; border-radius: 50%; font-size: .78em; pointer-events: auto; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffb3d4, 0 .3em 1em #0009; }
+.g #camBtn { display: flex; }
+#toast { position: absolute; left: 50%; top: 22%; z-index: 3; transform: translateX(-50%); max-width: 90vw; padding: .7em 1.2em; border-radius: 2em; background: #1c120ce6; color: #ffe27a; text-align: center; box-shadow: 0 .3em 1.2em #000a, 0 0 0 2px #ffb3d4; pointer-events: none; }
+#toast.in { animation: tin .5s; }
+@keyframes tin { from { transform: translate(-50%, -.6em); opacity: 0; } }
+body:not(.g) #toast { display: none; }
+/* photo mode: everything but the shutter bar goes away */
+#flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#flash.go { animation: flash .45s; }
+@keyframes flash { 10% { opacity: .85; } }
+#phBar { position: absolute; left: 0; right: 0; bottom: max(1em, env(safe-area-inset-bottom)); display: none; align-items: center; justify-content: center; gap: 1em; padding: 0 1em; flex-wrap: wrap; }
+.ph #phBar { display: flex; }
+.ph .hud, .ph #mbtn, .ph #pet, .ph #joyBase, .ph #o, .ph #offer { display: none !important; }
+#phF { display: flex; gap: .3em; flex-wrap: wrap; justify-content: center; }
+#phF button { padding: .5em .8em; font-size: .75em; background: #1c120cd9; color: #fff4e6; box-shadow: inset 0 0 0 1px #ffffff40; }
+#phF button.on { background: linear-gradient(#ffd0e6, #ff5ea8); color: #3a1a10; }
+#phShot { width: 4em; height: 4em; padding: 0; border-radius: 50%; background: #fff; box-shadow: 0 0 0 .3em #ffffff66, 0 .3em 1em #0008; }
+#phX { padding: .6em .9em; background: #1c120cd9; color: #fff4e6; }
+#phPrev { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 1em; padding: 1em; background: #0c0806ee; }
+#phImg { max-width: min(90vw, 60em); max-height: 70vh; border-radius: .6em; box-shadow: 0 0 0 .4em #fff4e6, 0 1em 3em #000; }
+#phPrev p { display: flex; gap: .8em; align-items: center; }
+#phSave { padding: .7em 1.2em; border-radius: .5em; background: linear-gradient(#ffd0e6, #ff5ea8); color: #3a1a10; font-weight: 800; text-decoration: none; }
 #ver { position: absolute; left: 0; right: 0; bottom: 1em; font-size: .7em; letter-spacing: .15em; color: #ffd9b099; text-align: center; }
 /* mini-games */
 .gm .sh-box { display: none; }
@@ -227,7 +250,7 @@ body:not(.g) #tip, .s #tip { display: none; }
 </head>
 <body class=l>
 <canvas id=c></canvas>
-<div id=coins class=hud><span class=coin></span><span id=n>0</span><button id=shopBtn aria-label=Negozio title="Negozio (B)">🛒<b class=dot></b></button></div>
+<div id=coins class=hud><span class=coin></span><span id=n>0</span><span id=clk></span><button id=shopBtn aria-label=Negozio title="Negozio (B)">🛒<b class=dot></b></button><button id=camBtn aria-label=Foto title="Foto (P)">📷</button></div>
 <div id=x class=hud><svg viewBox="0 0 36 36"><circle id=r cx=18 cy=18 r=15.9 pathLength=100 /></svg></div>
 <div id=t class=hud><b id=tn></b><span id=tb></span><span class=needs><i class=bar id=bh title=fame></i><i class=bar id=bt title=sete></i><i class=bar id=bj title=benessere></i></span><i id=ti></i></div>
 <div id=m>
@@ -247,6 +270,7 @@ body:not(.g) #tip, .s #tip { display: none; }
         <p>
           <i><b>B</b></i>Negozio
           <i><b>F</b></i>Dai uno snack
+          <i><b>P</b></i>Foto
           <i><b>C</b></i>Accovacciati
           <i><b>Esc</b></i>Menù
           <i><b>M</b></i>Audio
@@ -279,6 +303,10 @@ body:not(.g) #tip, .s #tip { display: none; }
 <div id=joyBase><i></i></div>
 <p id=tip hidden>Tocca un gatto per andare a coccolarlo · tocca il pavimento per camminare · trascina per guardarti intorno · joystick in basso a sinistra</p>
 <div id=mbtn><button id=snackBtn aria-label=Snack>🐟</button><button id=laserBtn aria-label=Laser>🔴</button><button id=wearBtn aria-label=Vestiti>👒</button></div>
+<p id=toast hidden></p>
+<div id=flash></div>
+<div id=phBar><div id=phF></div><button id=phShot aria-label=Scatta></button><button id=phX aria-label=Esci>✕</button></div>
+<div id=phPrev hidden><img id=phImg alt=""><p><a id=phSave>Salva la foto</a><button id=phClose>Chiudi</button></p></div>
 <pre id=i></pre>
 <script>
 /*SCRIPT*/

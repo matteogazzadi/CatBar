@@ -22,3 +22,6 @@ const NDUST = [1400, 900, 400][LV];
 // language: Italian if the browser prefers it, English otherwise
 const IT = /^it\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '');
 const L_ = (it, en) => (IT ? it : en);
+// time of day, weather and photo mode (driven by life.js; here so the frame loop can read them from the first frame)
+var SKY = { hour: 15.5, day: 1, rain: 0, snow: 0, want: 0, kind: 'clear', next: 3, expo: 1.45, amb: 0.8, shaft: 0.016, sx: 0, sy: 0, sz: 0, shadowT: 0 };
+var PHOTO = { on: false, filter: 0, req: false };

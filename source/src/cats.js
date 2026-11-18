@@ -366,10 +366,10 @@ const AV = [0, 0];
 function setPose(cat, p) { cat.pose = p; }
 function decide(cat) {
   const r = rnd();
-  cat.toy = null; cat.mood = 0; cat.box = null; cat.y = cat.perch ? cat.y : 0;
+  cat.toy = null; cat.mood = 0; cat.box = null; cat.hop = 0; cat.partner = null; cat.y = cat.perch ? cat.y : 0;
   if (cat.perch) {
     const pr = cat.perch;
-    if (r < pr.sleep * cat.sleepiness * 1.3) { cat.st = 'sleep'; setPose(cat, SLEEP); cat.tm = rr(18, 40); }
+    if (r < pr.sleep * cat.sleepiness * 1.3 * (SKY.day < 0.4 ? 1.8 : 1)) { cat.st = 'sleep'; setPose(cat, SLEEP); cat.tm = rr(18, 40); }
     else if (r < 0.75) { cat.st = 'idle'; setPose(cat, pick([SIT, LOAF, LOAF, SIT, STAND])); cat.tm = rr(6, 18); }
     else { cat.st = 'groom'; setPose(cat, GROOM); cat.tm = rr(5, 10); }
     return;
@@ -382,6 +382,12 @@ function decide(cat) {
   // shop items are irresistible: a free box, a catnip cushion nearby
   if (BOXES.length && rnd() < 0.35) { const bx = pick(BOXES); if (!CATS.some((o) => o.box === bx)) { cat.st = 'walk'; cat.goal = [bx.x, bx.z]; cat.next = 'box'; cat.box = bx; setPose(cat, STAND); cat.tm = 30; return; } }
   for (const n of NIPS) if (cat.nipT <= 0 && hypot(n.x - cat.x, n.z - cat.z) < 3 && rnd() < 0.6) { cat.st = 'walk'; cat.goal = [n.x, n.z]; cat.next = 'nip'; setPose(cat, STAND); cat.tm = 30; return; }
+  // friends: a cat that loves you follows you around
+  if (typeof loveOf === 'function' && loveOf(cat) >= 2 && rnd() < 0.05 * loveOf(cat) && dp > 1) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 30; return; }
+  // time with another cat: grooming each other, a play fight, or a nap together in a bed
+  if (r > 0.86 && startSocial(cat)) return;
+  // at night the floor cats look for a bed more often
+  if (SKY.day < 0.4 && rnd() < 0.3) { const b = pick(BEDS); if (!CATS.some((o) => o !== cat && hypot(o.x - b.x, o.z - b.z) < 0.4)) { cat.st = 'walk'; cat.goal = [b.x, b.z]; cat.next = 'bed'; setPose(cat, STAND); cat.tm = 30; return; } }
   if (r < 0.12 && dp < 5 && dp > 1) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 20; return; }
   if (r < 0.32) { // play with the nearest free toy
     let best = null, bd = 1e9; for (const t of TOYS) { const d = hypot(t.x - cat.x, t.z - cat.z); if (d < bd && !CATS.some((o) => o.toy === t)) { bd = d; best = t; } }
@@ -409,6 +415,21 @@ function walkTo(cat, gx, gz, dt, speed, stopAt = 0.12) {
 }
 function faceTo(cat, x, z, dt, k = 3) { const want = atan2(-(z - cat.z), x - cat.x), da = wrapA(want - cat.yaw); cat.yaw += clamp(da, -k * dt, k * dt); return abs(da); }
 
+function startSocial(cat) {
+  if (cat.perch || cat.gone) return false;
+  const free = (o) => o !== cat && !o.perch && !o.gone && o.pet <= 0 && (o.st === 'idle' || o.st === 'walk' || o.st === 'groom') && hypot(o.x - cat.x, o.z - cat.z) < 4;
+  const o = CATS.find(free); if (!o) return false;
+  const kind = pick(['groom', 'groom', 'play', 'nap']);
+  let mx = (cat.x + o.x) / 2, mz = (cat.z + o.z) / 2;
+  if (kind === 'nap') { const b = BEDS.find((b) => !CATS.some((c) => c !== cat && c !== o && hypot(c.x - b.x, c.z - b.z) < 0.4)); if (!b) return false; mx = b.x; mz = b.z; }
+  else if (!freeAt(mx, mz, 0.3)) return false;
+  const a = rr(0, TAU), d = kind === 'nap' ? 0.1 : kind === 'groom' ? 0.17 : 0.24;
+  [[cat, 1], [o, -1]].forEach(([c, s], k) => {
+    c.st = 'meet'; c.partner = k ? cat : o; c.social = kind; c.lead = k === 0; c.next = null; c.toy = null;
+    c.goal = [mx + cos(a) * d * s, mz - sin(a) * d * s]; c.tm = 15; setPose(c, STAND);
+  });
+  return true;
+}
 function initCats() {
   // shuffle the perches, give about half of the cats one
   const perches = PERCH.slice().sort(() => rnd() - 0.5);
@@ -485,6 +506,30 @@ function updateCat(cat, dt, t) {
       break;
     }
     case 'snack': targetLid = 0.6; cat.mood = 1; if (cat.tm < 0) decide(cat); break;
+    case 'meet': { // walking to a spot next to the other cat
+      walking = true;
+      const o = cat.partner;
+      if (!o || (o.st !== 'meet' && o.st !== 'social')) { decide(cat); break; }
+      if (walkTo(cat, cat.goal[0], cat.goal[1], dt, 0.36, 0.08) || cat.tm < 0) {
+        cat.st = 'social'; cat.tm = cat.social === 'nap' ? rr(25, 45) : rr(10, 18);
+        setPose(cat, cat.social === 'nap' ? SLEEP : cat.social === 'play' ? CROUCH : cat.lead ? SIT : LOAF);
+      }
+      break;
+    }
+    case 'social': {
+      const o = cat.partner;
+      if (!o || (o.st !== 'social' && o.st !== 'meet') || cat.tm < 0) { cat.partner = null; decide(cat); break; }
+      if (o.st !== 'social') break; // wait for the other one
+      if (cat.social !== 'nap') faceTo(cat, o.x, o.z, dt, 2);
+      if (cat.social === 'nap') targetLid = 1;
+      else if (cat.social === 'groom') { targetLid = cat.lead ? 0.5 : 0.85; if (cat.lead) cat.lick = (cat.lick + dt * 5) % TAU; }
+      else { // play fight: crouch, wiggle, hop at each other in turns
+        cat.tailSw = 0.7; cat.tailF = 5; cat.tm2 = (cat.tm2 || rr(0.6, 1.6)) - dt;
+        if (cat.tm2 < 0) { cat.tm2 = rr(1, 2.2); cat.hopT = 0.35; cat.swipe = 1; if (rnd() < 0.3) cat.meowT = 0.2; }
+        if (cat.hopT > 0) { cat.hopT -= dt; cat.hop = sin(PI * (1 - cat.hopT / 0.35)) * 0.08; setPose(cat, STAND); } else { cat.hop = 0; setPose(cat, CROUCH); }
+      }
+      break;
+    }
     case 'box': look = dpl < 3 ? 1 : 0; targetLid = 0.3; cat.x = cat.box.x; cat.z = cat.box.z; if (cat.tm < 0) { cat.y = 0; decide(cat); } break;
     case 'nip': { // catnip: roll around on the back, then zoom off
       targetLid = 0.55; cat.happy = 1; cat.tailSw = 0.6; cat.tailF = 4; cat.mood = 1;
@@ -508,7 +553,7 @@ function updateCat(cat, dt, t) {
     case 'beg': {
       walking = dpl > 0.75; look = dpl < 2.5 ? 1 : 0;
       if (walking) { cat.tailSw = 0.2; cat.mood = 1; walkTo(cat, PL.x, PL.z, dt, 0.42, 0.7); }
-      else { cat.spd = damp(cat.spd, 0, 8, dt); faceTo(cat, PL.x, PL.z, dt); if (cat.pose !== SIT) setPose(cat, SIT); cat.mood = 1; if (cat.meowT > 2) cat.meowT = rr(0.5, 2); }
+      else { cat.spd = damp(cat.spd, 0, 8, dt); faceTo(cat, PL.x, PL.z, dt); if (cat.pose !== SIT) setPose(cat, SIT); cat.mood = 1; if (cat.meowT > 2) cat.meowT = rr(0.5, 2); if (cat.gift) giveGift(cat); }
       if (cat.tm < 0 || dpl > 6) decide(cat);
       break;
     }
@@ -566,6 +611,7 @@ function updateCat(cat, dt, t) {
   if (cat.st === 'play' && cat.ph === 1) { P[1] += sin(t * 18) * 0.008; P[3] += sin(t * 18) * 0.06; }
   // grooming: lick the raised paw
   if (cat.st === 'groom') { P[7] += sin(cat.lick) * 0.12; P[14] += sin(cat.lick) * 0.01; }
+  if (cat.st === 'social' && cat.social === 'groom' && cat.lead) { P[7] += -0.25 + sin(cat.lick) * 0.14; P[6] += 0.15; }
   if (cat.swipe > 0) { cat.swipe -= dt * 3; P[13] += sin(cat.swipe * PI) * 0.12; P[14] += sin(cat.swipe * PI) * 0.1; P[21] += sin(cat.swipe * PI) * 1.2; }
   // petting reactions, in rhythm with the strokes
   if (cat.pet > 0 && cat.petMode) {

@@ -63,6 +63,15 @@ browser o usa Chrome / Edge.
 - **Telefono**: tocca un gatto e ci vai da solo ad accarezzarlo; tocca il pavimento per camminare lì; trascina per
   guardarti intorno; joystick fisso in basso a sinistra; pulsanti per snack, laser e vestiti; negozio a tutto schermo;
   funziona anche in verticale. I telefoni partono col dettaglio Basso per restare fluidi
+- **Amicizia**: ogni gatto ha da 0 a 5 cuori (♥♡♡♡♡ accanto al nome). Coccole, snack, mini giochi e vestiti li fanno
+  crescere. Con 2 cuori ti segue, con 3 ti porta dei regali (monete), con 4 ogni coccola vale una moneta in più
+- **Giorno e notte**: una giornata dura 12 minuti; il sole attraversa le finestre, al tramonto la luce è arancione, di
+  notte fuori ci sono le stelle e dentro le lampade. L'ora è accanto alle monete
+- **Meteo**: pioggia con le gocce fuori dalle finestre e il suono sui vetri, neve con gli alberi imbiancati (più spesso
+  in inverno). Col brutto tempo i raggi di sole spariscono e la luce diventa morbida
+- **Modalità foto** (tasto `P` o 📷): nasconde l'interfaccia, cinque filtri (normale, caldo, bianco e nero, vintage,
+  sogno) e uno scatto da salvare
+- **Momenti tra gatti**: due gatti si leccano a vicenda, fanno la lotta per gioco o dormono insieme nella stessa cuccia
 - La versione del gioco è scritta in basso nella schermata iniziale
 
 | | |
@@ -84,6 +93,7 @@ browser o usa Chrome / Edge.
 | Puntatore laser | `L` (dopo averlo comprato) |
 | Vestire un gatto | `V` guardandolo |
 | Mini gioco | `G` vicino al gatto col 🎲 |
+| Modalità foto | `P` (spazio per scattare) |
 | Accovacciarsi | Tieni premuto `C` (succede da solo quando accarezzi un gatto a terra) |
 | Menù | `Esc` |
 | Audio sì / no | `M` |
@@ -132,6 +142,7 @@ npm run build
 | [`source/src/main.js`](source/src/main.js) | Il renderer, la telecamera, i comandi, le coccole e le monete |
 | [`source/src/shop.js`](source/src/shop.js) | Negozio, cibo e cura, pacchetti di carte, collezione |
 | [`source/src/games.js`](source/src/games.js) | Mini giochi: Tris e Pong col gomitolo |
+| [`source/src/life.js`](source/src/life.js) | Giorno e notte, meteo, amicizia, modalità foto |
 | [`source/src/audio.js`](source/src/audio.js) | Musica, miagolii, fusa e suono della moneta |
 | [`source/src/quality.js`](source/src/quality.js) | I livelli di dettaglio |
 | [`source/src/math.js`](source/src/math.js) | Numeri casuali, matrici e funzioni per costruire le mesh |

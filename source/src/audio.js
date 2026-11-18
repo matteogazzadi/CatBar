@@ -1,7 +1,7 @@
 // ============================================================================
 // audio: a soft electric-piano tune, room tone, meows, purring and the coin chime, all synthesised (no files)
 // ============================================================================
-var AC, OUT, WET, muted = false, PURR, PURRF; // var: the frame loop starts before this line runs
+var AC, OUT, WET, muted = false, PURR, PURRF, RAING; // var: the frame loop starts before this line runs
 const VOL = 0.8;
 function startAudio() {
   if (AC) { AC.resume(); return; }
@@ -54,8 +54,11 @@ function startAudio() {
       tn += BEAT * 4; bar++;
     }
   }, 150);
+  // rain on the windows: filtered noise, its level follows the weather
+  RAING = G(0, OUT); N(AudioBufferSourceNode, { buffer: brown, loop: true, playbackRate: 3.1 }, N(BiquadFilterNode, { type: 'highpass', frequency: 900 }, N(BiquadFilterNode, { type: 'lowpass', frequency: 5000 }, RAING)));
   OUT.gain.setTargetAtTime(VOL, ac.currentTime, 1);
 }
+function setRain(v) { if (RAING) RAING.gain.setTargetAtTime(v * 0.35, AC.currentTime, 0.5); }
 function toggleMute() { muted = !muted; if (OUT) OUT.gain.setTargetAtTime(muted ? 0 : VOL, AC.currentTime, 0.1); }
 // where a sound is, relative to the listener: [pan, gain]
 function place3(x, z) {

@@ -10,9 +10,9 @@ if (!IT) {
     tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabPacks: 'Cards', tabAlbum: 'Collection' };
   for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
   const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
-  document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
+  document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>F</b></i>Treat<i><b>P</b></i>Photo<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
 }
-if (!IT) document.getElementById('shopBtn').title = 'Shop (B)';
+if (!IT) { document.getElementById('shopBtn').title = 'Shop (B)'; document.getElementById('camBtn').title = 'Photo (P)'; document.getElementById('phSave').textContent = 'Save the photo'; document.getElementById('phClose').textContent = 'Close'; }
 const SHOT = /[?&]shot/.test(location.search), DBG = +(location.search.match(/dbg=(\d)/) || [0, 0])[1]; // fixed size, no adaptation: for screenshots
 let loaded = 0, dead;
 const say = (m, to, ms) => {
@@ -76,7 +76,7 @@ ARTS.forEach((cv, l) => {
   }
 });
 
-const NU = 192, UB = new Float32Array(NU), UBS = new Float32Array(NU);
+const NU = 196, UB = new Float32Array(NU), UBS = new Float32Array(NU);
 const ubo = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST });
 const NMD = 256, MDD = new Float32Array(NMD * 16); ident(MDD.subarray(0, 16)); // prop matrices: 0 = the room
 const DL = []; // props to draw this frame: [mesh name, matrix slot]
@@ -157,7 +157,7 @@ function resize(w, h) {
 
 // ---------------------------------------------------------------- sun
 const SV = M4(), SP = M4(), SVP = M4();
-{
+function computeSun() { // the sun's shadow camera, fitted around the room
   const cx = 0, cy = 1.5, cz = 0;
   lookAt(SV, cx + SUN[0] * 30, cy + SUN[1] * 30, cz + SUN[2] * 30, cx, cy, cz);
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
@@ -167,6 +167,7 @@ const SV = M4(), SP = M4(), SVP = M4();
   }
   ortho(SP, x0, x1, y0, y1, -z1 - 1, -z0 + 1); mul4(SVP, SP, SV);
 }
+computeSun();
 const SUNC = [1.0 * 7.5, 0.76 * 7.5, 0.5 * 7.5];
 
 // ---------------------------------------------------------------- the player
@@ -227,7 +228,7 @@ const inGame = () => body.classList.contains('g');
 addEventListener('keydown', (e) => {
   KEY[e.code] = true;
   if (e.code === 'KeyH') info.hidden = !info.hidden;
-  if (e.code === 'Escape' && !locked && inGame() && !SHOPOPEN) body.className = 'm';
+  if (e.code === 'Escape' && !locked && inGame() && !SHOPOPEN && !PHOTO.on) body.className = 'm';
   if (e.code === 'KeyM' && typeof toggleMute === 'function') toggleMute();
   if (e.code === 'KeyE' && inGame()) PET.key = true;
 });
@@ -247,8 +248,8 @@ addEventListener('mousemove', (e) => {
 });
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
-  if (locked) body.className = 'g p';
-  else if (inGame() && !SHOPOPEN) { body.className = 'm'; PET.mouse = false; }
+  if (locked) body.className = PHOTO.on ? 'g p ph' : 'g p';
+  else if (inGame() && !SHOPOPEN && !PHOTO.on) { body.className = 'm'; PET.mouse = false; }
 });
 function enter() {
   if (mob && !TIPPED) { TIPPED = true; const t = $('tip'); t.hidden = false; setTimeout(() => (t.hidden = true), 9000); }
@@ -357,7 +358,7 @@ function giveSnack(c) {
   SAVE.snack--; saveItems();
   SNACK.cat = c; SNACK.t = 2.5; SNACK.x = c.sp[2][0]; SNACK.z = c.sp[2][2];
   if (c.st !== 'sleep' || true) { c.st = 'snack'; c.pose = c.pose === STAND ? CROUCH : c.pose === SLEEP ? LOAF : c.pose; c.tm = 2.5; }
-  c.hunger = max(0, c.hunger - 0.3); c.joy = min(1, c.joy + 0.25); c.meowT = 0.4;
+  c.hunger = max(0, c.hunger - 0.3); c.joy = min(1, c.joy + 0.25); c.meowT = 0.4; addLove(c, 0.35);
   for (let k = 0; k < 4; k++) PTD.set([c.sp[2][0] + rr(-0.06, 0.06), c.sp[2][1] + 0.05 + k * 0.03, c.sp[2][2] + rr(-0.06, 0.06), 0.001 + k * 0.12], ((PET.hk++) % (NH - 1)) * 4);
   return true;
 }
@@ -389,7 +390,7 @@ function updatePet(dt, fx, fy, fz) {
     if (PET.heart < 0) { PET.heart = 0.32; const k = PET.hk++ % (NH - 1); PTD.set([c.sp[2][0] + rr(-0.05, 0.05), c.sp[2][1] + 0.07, c.sp[2][2] + rr(-0.05, 0.05), 0.001], k * 4); }
     if (PET.t >= PET_TIME) {
       PET.t = 0;
-      if (c.coinT <= 0) { popCoin(c.joy > 0.6 ? 2 : 1); c.coinT = COOLDOWN; c.petTotal++; if (rnd() < 0.5) meow(c, 0.6); }
+      if (c.coinT <= 0) { popCoin((c.joy > 0.6 ? 2 : 1) + (loveOf(c) >= 4 ? 1 : 0)); addLove(c, c.joy > 0.6 ? 0.3 : 0.2); c.coinT = COOLDOWN; c.petTotal++; if (rnd() < 0.5) meow(c, 0.6); }
     }
   }
   for (const c of CATS) c.coinT -= dt;
@@ -402,7 +403,7 @@ function updatePet(dt, fx, fy, fz) {
     lastTarget = show;
     tl.classList.toggle('on', !!show);
     if (show) {
-      $('tn').textContent = show.name; $('tb').textContent = show.breed;
+      $('tn').textContent = show.name + '  ' + hearts(show); $('tb').textContent = show.breed;
       for (const [id, v] of [['bh', 1 - show.hunger], ['bt', 1 - show.thirst], ['bj', show.joy]]) $(id).style.setProperty('--v', v.toFixed(2));
       const need = show.hunger > 0.6 ? L_('ha fame', 'is hungry') : show.thirst > 0.6 ? L_('ha sete', 'is thirsty') : '';
       $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tocca il gatto: coccola', 'tap the cat: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack && !mob ? L_(' · F: snack', ' · F: treat') : '') + (typeof OFFER !== 'undefined' && OFFER && OFFER.cat === show && !mob ? L_(' · G: gioca!', ' · G: play!') : ''));
@@ -431,12 +432,13 @@ function uniforms(t, fx, fy, fz) {
   UB.set(VPm, 0); UB.set(IVP, 16); UB.set(SVP, 32); UB.set(histOK ? PVP : VP0, 48);
   UB[64] = ex; UB[65] = ey; UB[66] = ez; UB[67] = t;
   UB[68] = SUN[0]; UB[69] = SUN[1]; UB[70] = SUN[2]; UB[71] = SSAO ? 1 : 0;
-  UB[72] = SUNC[0]; UB[73] = SUNC[1]; UB[74] = SUNC[2]; UB[75] = 0.016;
+  UB[72] = SUNC[0]; UB[73] = SUNC[1]; UB[74] = SUNC[2]; UB[75] = SKY.shaft;
   UB[76] = RW; UB[77] = RH_; UB[78] = 1 / RW; UB[79] = 1 / RH_;
-  UB[80] = 1.45; UB[81] = frame % 64; UB[82] = 0.8; UB[83] = DBG;
+  UB[80] = SKY.expo; UB[81] = frame % 64; UB[82] = SKY.amb; UB[83] = DBG;
   UB[84] = V[0]; UB[85] = V[4]; UB[86] = V[8]; UB[87] = 0; UB[88] = V[1]; UB[89] = V[5]; UB[90] = V[9]; UB[91] = 0;
   UB[92] = jx; UB[93] = jy; UB[94] = histOK ? 1 : 0; UB[95] = FOCUS;
-  UB.set(LT, 96);
+  UB[96] = SKY.day; UB[97] = SKY.rain; UB[98] = SKY.snow; UB[99] = PHOTO.on ? PHOTO.filter : 0;
+  UB.set(LT, 100);
   PVP.set(VP0); histOK = true;
   UBS.set(UB); UBS.set(SVP, 0);
   Q.writeBuffer(ubo, 0, UB); Q.writeBuffer(uboS, 0, UBS);
@@ -478,14 +480,15 @@ function drawCats(p, shells) {
   p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32');
   for (const c of CATS) if (c.vis) p.drawIndexed(VC.n, shells ? c.shells + 1 : 1, 0, 0, c.i * 64);
 }
-// static shadows are drawn once and copied every frame; cats and toys are drawn on top
-{
+// static shadows are drawn once (again when the sun has moved) and copied every frame; cats and toys go on top
+function drawStaticShadow() {
   const e = device.createCommandEncoder();
   const p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadowS.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'store' } });
   UBS.set(SVP, 0); Q.writeBuffer(uboS, 0, UBS);
   p.setPipeline(pWShadow); p.setBindGroup(0, bgShadow); drawStatic(p); p.end();
   Q.submit([e.finish()]);
 }
+drawStaticShadow();
 const sphereVisible = (x, y, z, r) => { // against the view frustum (rows of VP)
   const m = VPm;
   for (let i = 0; i < 4; i++) {
@@ -567,7 +570,7 @@ initCats();
 let scale = mob ? 0.6 : [1, 0.85, 0.7][LV], last = performance.now(), simT = 0, ftAvg = 16, ftN = 0;
 const DPR = min(devicePixelRatio || 1, mob ? 1.5 : 2);
 const fitSize = () => { const s = SHOT ? 1 : DPR * scale; resize(canvas.clientWidth * s, canvas.clientHeight * s); };
-if (SHOT) window.__cb = { VPm, get OFFER() { return OFFER; }, audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
+if (SHOT) window.__cb = { SKY, PHOTO, VPm, get OFFER() { return OFFER; }, audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
 function tick(dt) {
   simT += dt;
   if (inGame() && !(SHOT && window.__cb.frozen)) movePlayer(dt);
@@ -575,6 +578,7 @@ function tick(dt) {
   const cp = cos(PL.pitch), fx = sin(PL.yaw) * cp, fy = sin(PL.pitch), fz = -cos(PL.yaw) * cp;
   for (const c of CATS) updateCat(c, dt, simT);
   updateToys(dt);
+  updateDay(dt);
   updatePet(dt, fx, fy, fz);
   // focus for the depth of field: the cat you look at, otherwise where the view meets the floor
   { const tc = LV < 2 && (PET.on ? PET.cat : lastTarget); if (tc) { const want = hypot(tc.sp[1][0] - PL.x, tc.sp[1][1] - PL.eye, tc.sp[1][2] - PL.z); FOCUS = FOCUS > 0 ? damp(FOCUS, want, 4, dt) : want; } else FOCUS = 0; }
@@ -609,6 +613,7 @@ function loop(now) {
   const [fx, fy, fz] = tick(dt);
   if (SHOT) return; // ?shot draws only when grab() asks
   draw(fx, fy, fz);
+  if (PHOTO.req) takePhoto();
   if (!info.hidden && frame % 15 === 0) info.textContent = `${(1000 / ftAvg).toFixed(0)} fps · ${RW}×${RH_} · ${CATS.filter((c) => c.vis).length} ${L_('gatti visibili', 'cats in view')}`;
 }
 info.hidden = true;

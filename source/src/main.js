@@ -192,6 +192,7 @@ const inGame = () => body.classList.contains('g');
 addEventListener('keydown', (e) => {
   KEY[e.code] = true;
   if (e.code === 'KeyH') info.hidden = !info.hidden;
+  if (e.code === 'Escape' && !locked && inGame()) body.className = 'm';
   if (e.code === 'KeyM' && typeof toggleMute === 'function') toggleMute();
   if (e.code === 'KeyE' && inGame()) PET.key = true;
 });
@@ -199,12 +200,14 @@ addEventListener('keyup', (e) => { KEY[e.code] = false; if (e.code === 'KeyE') P
 addEventListener('blur', () => { for (const k in KEY) KEY[k] = false; PET.mouse = PET.key = false; });
 canvas.addEventListener('mousedown', (e) => {
   if (!inGame()) return;
-  if (!locked && !mob) { canvas.requestPointerLock?.(); }
+  if (!locked && !mob) lockMouse();
   if (e.button === 0) PET.mouse = true;
 });
 addEventListener('mouseup', (e) => { if (e.button === 0) PET.mouse = false; });
+// pointer lock where allowed; otherwise (some embedded pages) drag with the mouse to look around
+const lockMouse = () => { try { const r = canvas.requestPointerLock?.(); if (r && r.catch) r.catch(() => {}); } catch {} };
 addEventListener('mousemove', (e) => {
-  if (!locked) return;
+  if (!locked && !(inGame() && e.buttons)) return;
   PL.yaw += e.movementX * 0.0022; PL.pitch = clamp(PL.pitch - e.movementY * 0.0022, -1.45, 1.45);
 });
 document.addEventListener('pointerlockchange', () => {
@@ -214,7 +217,7 @@ document.addEventListener('pointerlockchange', () => {
 });
 function enter() {
   body.className = 'g'; $('d').textContent = 'Torna dai gatti';
-  if (!mob) canvas.requestPointerLock?.();
+  if (!mob) lockMouse();
   if (typeof startAudio === 'function') startAudio();
 }
 $('d').onclick = enter;

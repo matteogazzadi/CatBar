@@ -72,6 +72,16 @@ browser o usa Chrome / Edge.
 - **Modalità foto** (tasto `P` o 📷): nasconde l'interfaccia, cinque filtri (normale, caldo, bianco e nero, vintage,
   sogno) e uno scatto da salvare
 - **Momenti tra gatti**: due gatti si leccano a vicenda, fanno la lotta per gioco o dormono insieme nella stessa cuccia
+- **Clienti** (dalle 7:30 alle 21): entrano, si siedono a un tavolino e ordinano (espresso, cappuccino, tè, cioccolata).
+  Vai alla macchina del caffè dietro il bancone (`R` o il pulsante), preparalo fermando il cursore nella zona verde e
+  portalo al cliente (`R` o tocca la sua bolla). Più è buono e più i gatti sono felici, più ti pagano
+- **Livello del locale** (⭐ accanto alle monete): clienti, coccole e mini giochi danno esperienza. Al livello 2 si
+  sblocca l'arredamento, al 3 due clienti alla volta e le adozioni, poi mance più ricche e tre clienti
+- **Arredamento** (scheda 🏠 del negozio): cucce, igloo, tiragraffi, poltrona, piante e tappeti. Scegli il punto
+  guardando il pavimento; i gatti li usano per dormire e salire in alto
+- **Adozioni**: un cliente contento può chiedere di adottare un gatto che ti vuole bene. Se accetti, il gatto esce con
+  la sua nuova famiglia, ricevi 60 monete, dopo un po' arriva una lettera e un nuovo trovatello entra nel locale.
+  I gatti speciali delle carte non vengono mai adottati
 - La versione del gioco è scritta in basso nella schermata iniziale
 
 | | |
@@ -94,6 +104,7 @@ browser o usa Chrome / Edge.
 | Vestire un gatto | `V` guardandolo |
 | Mini gioco | `G` vicino al gatto col 🎲 |
 | Modalità foto | `P` (spazio per scattare) |
+| Preparare / servire | `R` vicino alla macchina del caffè o al cliente |
 | Accovacciarsi | Tieni premuto `C` (succede da solo quando accarezzi un gatto a terra) |
 | Menù | `Esc` |
 | Audio sì / no | `M` |
@@ -143,6 +154,7 @@ npm run build
 | [`source/src/shop.js`](source/src/shop.js) | Negozio, cibo e cura, pacchetti di carte, collezione |
 | [`source/src/games.js`](source/src/games.js) | Mini giochi: Tris e Pong col gomitolo |
 | [`source/src/life.js`](source/src/life.js) | Giorno e notte, meteo, amicizia, modalità foto |
+| [`source/src/cafe.js`](source/src/cafe.js) | Clienti e macchina del caffè, livello del locale, adozioni, arredamento |
 | [`source/src/audio.js`](source/src/audio.js) | Musica, miagolii, fusa e suono della moneta |
 | [`source/src/quality.js`](source/src/quality.js) | I livelli di dettaglio |
 | [`source/src/math.js`](source/src/math.js) | Numeri casuali, matrici e funzioni per costruire le mesh |

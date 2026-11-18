@@ -12,7 +12,8 @@ const COL = [];             // colliders: {x, z, r} or {x0, z0, x1, z1}; cat: fa
 const PERCH = [];           // {x, y, z, yaw, sleep}
 const BEDS = [];            // floor beds {x, z}
 const LIGHTS = [];          // [x, y, z, radius, r, g, b, diffuseOnly]
-const ARTS = [];             // canvases for the texture array
+const ARTS = [];
+const SEATS = [];           // chairs at the tables, for customers {x, z, yaw}             // canvases for the texture array
 
 const C = {
   oak: hex(0xa8754a), dark: hex(0x5a3a24), walnut: hex(0x4a2e1c), plaster: hex(0xefdcc0), ceil: hex(0xf1e6d4),
@@ -201,6 +202,7 @@ function chair(x, z, yaw) {
   rbox(W, mat(M, (m) => rz(tr(m, -0.19, 0.83, 0), 0.08)), 0.03, 0.09, 0.42, 0.012, c, WOOD);
   rbox(W, mat(M, (m) => rz(tr(m, -0.185, 0.65, 0), 0.06)), 0.02, 0.03, 0.38, 0.008, c, WOOD);
   col({ x: x - cos(yaw) * 0.02, z: z + sin(yaw) * 0.02, r: 0.24, cat: false });
+  SEATS.push({ x, z, yaw });
 }
 function table(x, z) {
   lathe(W, at(x, 0, z), [[0, 0], [0.24, 0], [0.24, 0.02], [0.05, 0.05], [0, 0.05]], 24, C.iron, METAL);
@@ -527,6 +529,53 @@ acc('tutu', 0, (m) => {
 prop('kibble', (m) => { for (let i = 0; i < 26; i++) { const a = rr(0, TAU), r = sqrt(rnd()) * 0.045; sphere(m, place(cos(a) * r, 0.03 - r * 0.35 + rr(0, 0.006), sin(a) * r, rr(0, 6)), 0.0075, jitter(hex(0x8a5230), 0.25), PLAIN, 6, 0.75); } });
 prop('water', (m) => lathe(m, M4(), [[0.062, 0], [0, 0.0005]], 18, hex(0x6a8a98), GLASS));
 prop('snack', (m) => { sphere(m, sc(M4(), 1.4, 0.7, 1), 0.012, hex(0xd88a6a), PLAIN, 8); });
+// people: separate parts, posed by cafe.js (+x forward, feet at y = 0)
+const SKIN = [0xf0c8a8, 0xd8a07a, 0x9a6a4a, 0x6a4430], SHIRT = [0x3a6ab0, 0xc84a4a, 0x4a9a6a, 0xe0b040, 0x8a5ac0, 0xf0f0f0], HAIR = [0x2a1a10, 0x8a5a2a, 0xe0c080, 0x1a1a1a, 0xb04020];
+SKIN.forEach((s, k) => prop('p_head' + k, (m) => {
+  sphere(m, sc(M4(), 1, 1.12, 1), 0.1, hex(s), FABRIC, 18);
+  sphere(m, tr(M4(), 0.1, -0.005, 0), 0.016, shade(hex(s), 0.92), FABRIC, 8);
+  for (const z of [-0.035, 0.035]) sphere(m, tr(M4(), 0.088, 0.025, z), 0.011, hex(0x1a1410), CERAMIC, 8);
+  rbox(m, tr(M4(), 0.093, -0.045, 0), 0.01, 0.006, 0.04, 0.003, hex(0x8a3a3a), PLAIN);
+}));
+HAIR.forEach((c, k) => prop('p_hair' + k, (m) => {
+  lathe(m, rz(tr(M4(), -0.012, 0.02, 0), 0.35), [[0.106, -0.03], [0.108, 0.02], [0.09, 0.07], [0.05, 0.105], [0, 0.115]], 20, hex(c), FABRIC);
+  if (k % 2) sphere(m, tr(M4(), -0.1, -0.02, 0), 0.05, hex(c), FABRIC, 10); // a bun
+}));
+SHIRT.forEach((c, k) => {
+  prop('p_body' + k, (m) => { rbox(m, tr(M4(), 0, 0.25, 0), 0.22, 0.5, 0.36, 0.09, hex(c), FABRIC); cyl(m, tr(M4(), 0, 0.48, 0), 0.045, 0.08, hex(SKIN[k % 4]), FABRIC, 10, 0); });
+  prop('p_arm' + k, (m) => { cyl(m, tr(M4(), 0, -0.42, 0), 0.045, 0.42, hex(c), FABRIC, 10, 2, 0.05); sphere(m, tr(M4(), 0, -0.45, 0), 0.045, hex(SKIN[k % 4]), FABRIC, 10); });
+});
+prop('p_thigh', (m) => cyl(m, tr(M4(), 0, -0.45, 0), 0.068, 0.46, hex(0x2a3448), FABRIC, 10, 2, 0.075));
+prop('p_shin', (m) => { cyl(m, tr(M4(), 0, -0.44, 0), 0.055, 0.44, hex(0x2a3448), FABRIC, 10, 0, 0.065); rbox(m, tr(M4(), 0.04, -0.46, 0), 0.2, 0.06, 0.1, 0.03, hex(0x3a2418), FABRIC); });
+prop('p_cup', (m) => { lathe(m, M4(), [[0, 0], [0.03, 0.002], [0.04, 0.06], [0.036, 0.06], [0, 0.05]], 14, C.white, CERAMIC); lathe(m, tr(M4(), 0, 0.052, 0), [[0.036, 0], [0, 0.001]], 12, hex(0x9a6a40), PLAIN); });
+// furniture you can buy and place
+prop('f_bed', (m) => { lathe(m, M4(), [[0, 0], [0.27, 0], [0.27, 0.03], [0, 0.04]], 28, hex(0xd8c8ae), PLUSH); torus(m, tr(M4(), 0, 0.08, 0), 0.22, 0.075, hex(0xe0a0b0), PLUSH, 30, 12); });
+prop('f_igloo', (m) => {
+  lathe(m, M4(), [[0, 0], [0.3, 0], [0.3, 0.03], [0, 0.035]], 28, hex(0xc8b8a0), PLUSH);
+  const p = []; for (let i = 0; i <= 10; i++) { const a = (i / 10) * PI / 2; p.push([0.3 * cos(a) + 0.001, 0.03 + 0.32 * sin(a)]); }
+  lathe(m, M4(), p, 28, hex(0x8a6a9a), PLUSH, 0.9, TAU - 0.9);
+  for (const s of [-1, 1]) lathe(m, rx(ry(M4(), s * 0.9), 0), [[0.001, 0.03], [0.3, 0.03]], 2, hex(0x8a6a9a), PLUSH);
+});
+prop('f_tree', (m) => {
+  rbox(m, tr(M4(), 0, 0.03, 0), 0.5, 0.06, 0.5, 0.02, C.plushG, PLUSH);
+  cyl(m, tr(M4(), 0, 0.06, 0), 0.055, 0.6, C.sisal, SISAL, 18, 0);
+  lathe(m, tr(M4(), 0, 0.66, 0), [[0, 0], [0.24, 0], [0.25, 0.025], [0.24, 0.05], [0, 0.05]], 26, C.plushG, PLUSH);
+  torus(m, tr(M4(), 0, 0.72, 0), 0.2, 0.035, C.plush, PLUSH, 26, 10);
+  cyl(m, tr(M4(), 0.18, 0.4, 0.1), 0.002, 0.26, C.cream, PLAIN, 4, 0); sphere(m, tr(M4(), 0.18, 0.38, 0.1), 0.03, hex(0x3ac0e0), YARN, 10);
+});
+prop('f_plant', (m) => {
+  lathe(m, M4(), [[0, 0], [0.13, 0], [0.17, 0.32], [0.18, 0.34], [0.16, 0.34], [0, 0.3]], 18, hex(0xd0d4cf), CERAMIC);
+  for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; cyl(m, rz(ry(tr(M4(), 0, 0.3, 0), a), -0.35 - (i % 3) * 0.12), 0.006, 0.35 + (i % 3) * 0.12, C.leaf, LEAF, 5, 0); leaf(m, rz(ry(tr(M4(), cos(a) * (0.13 + (i % 3) * 0.05), 0.62 + (i % 3) * 0.1, -sin(a) * (0.13 + (i % 3) * 0.05)), a), 0.5), 0.3, 0.2, jitter(C.leaf2, 0.2), 0.4, 0.2); }
+});
+prop('f_rug', (m) => { lathe(m, M4(), [[0, 0], [0.75, 0], [0.75, 0.012], [0, 0.014]], 40, hex(0xc86a5a), PLUSH); torus(m, tr(M4(), 0, 0.012, 0), 0.6, 0.012, hex(0xf2e0c0), PLUSH, 40, 6); torus(m, tr(M4(), 0, 0.012, 0), 0.35, 0.01, hex(0xf2e0c0), PLUSH, 32, 6); });
+prop('f_arm', (m) => {
+  const c = hex(0xd9a031);
+  rbox(m, tr(M4(), 0, 0.22, 0), 0.7, 0.3, 0.72, 0.06, c, FABRIC);
+  rbox(m, tr(M4(), 0.02, 0.43, 0), 0.6, 0.12, 0.56, 0.05, shade(c, 1.05), FABRIC);
+  rbox(m, tr(M4(), -0.3, 0.62, 0), 0.16, 0.6, 0.72, 0.07, c, FABRIC);
+  for (const s of [-1, 1]) rbox(m, tr(M4(), 0, 0.5, s * 0.32), 0.7, 0.26, 0.12, 0.06, c, FABRIC);
+  for (const s of [-1, 1]) for (const t of [-1, 1]) cyl(m, tr(M4(), s * 0.28, 0, t * 0.28), 0.02, 0.08, C.walnut, WOOD, 8);
+});
 const TOYS = [], BOXES = [], NIPS = [];
 function addToy(kind, x, z, mesh) {
   const t = { kind, mesh: mesh || kind, x, z, vx: 0, vz: 0, r: kind === 'yarn' ? 0.045 : 0.035, R: M4(), yaw: rr(0, TAU), wind: 0 };

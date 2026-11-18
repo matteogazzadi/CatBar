@@ -123,13 +123,14 @@ function shopDots() {
     toys: fresh('toys', ITEMS.filter((i) => !(i.once && SAVE[i.id])).map((i) => i.price)),
     wear: fresh('wear', WEAR.filter((w) => !SAVE.acc.includes(w[0])).map((w) => w[2])),
     packs: fresh('packs', PACKS.map((p) => p.price)),
+    home: CAFE_READY && cafeLevel() >= 2 && fresh('home', FURN.map((d) => d[2])),
   };
   document.querySelectorAll('#shop nav button').forEach((b) => b.classList.toggle('has', !!D[b.dataset.tab]));
   $('shopBtn').classList.toggle('has', Object.values(D).some(Boolean));
 }
 setInterval(shopDots, 700);
 function renderShop() {
-  if (SHOPOPEN && shopTab !== 'album') { (SAVE.seenT || (SAVE.seenT = {}))[shopTab] = coins; saveItems(); }
+  if (SHOPOPEN && shopTab !== 'album' && (shopTab !== 'home' || (CAFE_READY && cafeLevel() >= 2))) { (SAVE.seenT || (SAVE.seenT = {}))[shopTab] = coins; saveItems(); }
   $('shN').textContent = coins;
   document.querySelectorAll('#shop nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === shopTab));
   shopDots();
@@ -163,6 +164,7 @@ function renderShop() {
       return `<div class="item ${on ? 'worn' : ''}"><span class=ico>${icon}</span><b>${esc_(IT ? it : en)}</b><p>${L_({ head: 'Testa', face: 'Viso', neck: 'Collo', body: 'Corpo' }[slot], slot[0].toUpperCase() + slot.slice(1))}</p>${btn}</div>`;
     }).join('') + '</div>';
     $('wearSel').onchange = (e) => { wearCat = CATS[+e.target.value]; renderShop(); };
+  } else if (shopTab === 'home') { renderFurn(B);
   } else if (shopTab === 'packs') {
     B.innerHTML = '<div class="grid packs">' + PACKS.map((pk) => {
       const [nm, ds] = L(pk);

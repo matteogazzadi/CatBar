@@ -16,7 +16,7 @@ function offerLoop(now) {
   if (!OFFER.cat) {
     OFFER.wait -= dt;
     if (OFFER.wait < 0 && inGame()) {
-      const pool = CATS.filter((c) => c.st !== 'sleep' && hypot(c.x - PL.x, c.z - PL.z) < 8);
+      const pool = CATS.filter((c) => !c.gone && c.st !== 'sleep' && hypot(c.x - PL.x, c.z - PL.z) < 8);
       if (pool.length) { OFFER.cat = pick(pool); OFFER.kind = pick(['ttt', 'pong']); OFFER.life = 50; OFFER.cat.meowT = 0.5; }
       else OFFER.wait = 5;
     }
@@ -61,6 +61,7 @@ function finish(res) {
   const rare = WEAR.filter((w) => !w[2] && !SAVE.acc.includes(w[0]));
   if (win && rare.length && rnd() < 0.45) { const w = pick(rare); SAVE.acc.push(w[0]); saveItems(); msg += ` · ${L_('Nuovo accessorio', 'New item')}: ${w[3]} ${IT ? w[4] : w[5]} (${L_('in Vestiti', 'in Clothes')})`; }
   if (c) { c.joy = min(1, c.joy + (win ? 0.15 : 0.3)); c.meowT = 0.3; addLove(c, 0.4); }
+  if (win && CAFE_READY) addXP(6);
   $('gR').textContent = msg; $('gAgain').hidden = win;
   if (typeof coinSound === 'function') coinSound();
 }

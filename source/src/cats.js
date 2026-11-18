@@ -386,6 +386,8 @@ function decide(cat) {
   if (typeof loveOf === 'function' && loveOf(cat) >= 2 && rnd() < 0.05 * loveOf(cat) && dp > 1) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 30; return; }
   // time with another cat: grooming each other, a play fight, or a nap together in a bed
   if (r > 0.86 && startSocial(cat)) return;
+  // a free bed or perch among the furniture you bought
+  if (rnd() < 0.12) { const p = PERCH.find((p) => p.furn && !CATS.some((o) => o.perch === p || o.climb === p) && hypot(p.x - cat.x, p.z - cat.z) < 5); if (p) { cat.st = 'walk'; cat.goal = [p.x + 0.35, p.z]; cat.next = 'climb'; cat.climb = p; setPose(cat, STAND); cat.tm = 25; return; } }
   // at night the floor cats look for a bed more often
   if (SKY.day < 0.4 && rnd() < 0.3) { const b = pick(BEDS); if (!CATS.some((o) => o !== cat && hypot(o.x - b.x, o.z - b.z) < 0.4)) { cat.st = 'walk'; cat.goal = [b.x, b.z]; cat.next = 'bed'; setPose(cat, STAND); cat.tm = 30; return; } }
   if (r < 0.12 && dp < 5 && dp > 1) { cat.st = 'beg'; cat.goal = [PL.x, PL.z]; setPose(cat, STAND); cat.tm = 20; return; }
@@ -443,6 +445,7 @@ function initCats() {
 }
 
 function updateCat(cat, dt, t) {
+  if (cat.gone) { cat.x = 0; cat.z = 0; cat.y = -30; if (frame % 30 === cat.i % 30) pose(cat, t); return; } // adopted: off stage
   cat.tm -= dt;
   // needs: hungry in ~8 minutes, thirsty in ~6; well-being drifts towards how fed and loved the cat is
   cat.hunger = min(1, cat.hunger + dt / 480); cat.thirst = min(1, cat.thirst + dt / 360);
@@ -491,6 +494,7 @@ function updateCat(cat, dt, t) {
       if (walkTo(cat, cat.goal[0], cat.goal[1], dt, cat.zoom > 0 ? 1.1 : 0.38) || cat.tm < 0) {
         if (cat.next === 'bed') { cat.st = 'sleep'; setPose(cat, SLEEP); cat.tm = rr(20, 45); }
         else if (cat.next === 'eat' || cat.next === 'drink') { cat.st = cat.next; setPose(cat, CROUCH); cat.tm = rr(6, 10); }
+        else if (cat.next === 'climb' && cat.climb) { cat.perch = cat.climb; cat.climb = null; cat.x = cat.perch.x; cat.y = cat.perch.y; cat.z = cat.perch.z; cat.yaw = cat.perch.yaw; cat.st = 'idle'; setPose(cat, pick([LOAF, SIT, SLEEP])); cat.tm = rr(15, 40); }
         else if (cat.next === 'box' && cat.box) { cat.st = 'box'; setPose(cat, rnd() < 0.5 ? LOAF : SIT); cat.tm = rr(20, 45); cat.x = cat.box.x; cat.z = cat.box.z; cat.y = 0.008; }
         else if (cat.next === 'nip') { cat.st = 'nip'; setPose(cat, ROLL); cat.tm = rr(7, 11); cat.nipT = 45; meow(cat, 0.8); }
         else { cat.st = 'idle'; setPose(cat, pick([SIT, STAND, LOAF])); cat.tm = rr(3, 9); }
@@ -530,6 +534,7 @@ function updateCat(cat, dt, t) {
       }
       break;
     }
+    case 'adopted': walking = true; cat.tailSw = 0.4; break;
     case 'box': look = dpl < 3 ? 1 : 0; targetLid = 0.3; cat.x = cat.box.x; cat.z = cat.box.z; if (cat.tm < 0) { cat.y = 0; decide(cat); } break;
     case 'nip': { // catnip: roll around on the back, then zoom off
       targetLid = 0.55; cat.happy = 1; cat.tailSw = 0.6; cat.tailF = 4; cat.mood = 1;

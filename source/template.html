@@ -199,6 +199,33 @@ body:not(.g) #toast { display: none; }
 #phImg { max-width: min(90vw, 60em); max-height: 70vh; border-radius: .6em; box-shadow: 0 0 0 .4em #fff4e6, 0 1em 3em #000; }
 #phPrev p { display: flex; gap: .8em; align-items: center; }
 #phSave { padding: .7em 1.2em; border-radius: .5em; background: linear-gradient(#ffd0e6, #ff5ea8); color: #3a1a10; font-weight: 800; text-decoration: none; }
+#lvl { position: relative; padding: .15em .45em; margin: 0 -.2em 0 .1em; font-size: .62em; border-radius: 1em; pointer-events: auto; color: #3a1a10;
+  background: linear-gradient(90deg, #ffe27a calc(var(--p, 0) * 100%), #fff4e6 calc(var(--p, 0) * 100%)); box-shadow: inset 0 -.12em #0003; }
+.ov { position: absolute; inset: 0; display: grid; place-items: center; padding: 1em; }
+.ov[hidden] { display: none; }
+.ov .row { display: flex; gap: .8em; flex-wrap: wrap; justify-content: center; }
+#aP, #lP { max-width: 24em; text-align: center; font-weight: 600; line-height: 1.5; color: #f2e0d0; }
+.letter { background: #f6efe0 !important; color: #3a2a20; } .letter #lP { color: #3a2a20; font: italic 600 1.05em/1.6 Georgia, serif; } .letter b { font-size: 1.2em; }
+#bS { color: #ffe27a; text-align: center; min-height: 1.4em; }
+#bBar { position: relative; width: min(20em, 80vw); height: 2.2em; border-radius: 1em; background: #3a2418; box-shadow: inset 0 0 0 2px #ffffff22; overflow: hidden; }
+#bZone { position: absolute; top: 0; bottom: 0; background: #5ad07a99; }
+#bMark { position: absolute; top: -.2em; bottom: -.2em; width: .35em; margin-left: -.175em; background: #fff; box-shadow: 0 0 .6em #fff; }
+#bStop, #bDone { font-size: 1.1em; padding: .8em 1.6em; background: linear-gradient(#ffd0e6, #ff5ea8); }
+#brewBtn { position: absolute; left: 50%; bottom: 7.5em; transform: translateX(-50%); z-index: 2; padding: .8em 1.3em; background: linear-gradient(#fff2c0, #ffd04a); box-shadow: 0 0 0 3px #1c120c, 0 .3em 1.2em #000a; }
+.s #brewBtn, body:not(.g) #brewBtn { display: none; }
+#hold { left: 50%; top: 4.2em; transform: translateX(-50%); padding: .4em .9em; border-radius: 2em; background: #fff4e6; color: #3a1a10; box-shadow: 0 0 0 3px #ffd04a; }
+#hold[hidden] { display: none !important; }
+#cafeHint { position: absolute; left: 50%; bottom: 1em; transform: translateX(-50%); max-width: 90vw; padding: .45em .9em; border-radius: 1em; background: #1c120cd9; font-size: .75em; text-align: center; pointer-events: none; }
+@media (pointer: coarse) { #cafeHint { bottom: 10.5em; } }
+.cust { position: absolute; left: 0; top: 0; z-index: 2; display: flex; align-items: center; gap: .3em; padding: .3em .6em; border-radius: 1.2em; font-size: 1em; background: #fff4e6; color: #3a1a10; box-shadow: 0 .3em 1em #0008; transform-origin: 50% 100%; }
+.cust.mine { box-shadow: 0 0 0 3px #ffd04a, 0 .3em 1em #0008; }
+.cust i { display: block; width: 1.8em; height: .35em; border-radius: 1em; background: linear-gradient(90deg, #5ad07a calc(var(--p) * 100%), #0002 calc(var(--p) * 100%)); }
+.s .cust, body:not(.g) .cust, .ph .cust { display: none !important; }
+#plBar { position: absolute; left: 50%; bottom: 1.2em; transform: translateX(-50%); display: none; align-items: center; gap: .5em; flex-wrap: wrap; justify-content: center; padding: .5em .8em; border-radius: 1em; background: #1c120ce6; box-shadow: 0 .3em 1em #000a; }
+.pl #plBar { display: flex; }
+.pl #mbtn, .pl #pet, .pl #brewBtn, .pl #cafeHint { display: none !important; }
+#plBar button { padding: .55em .9em; font-size: .8em; }
+#plOk:disabled { opacity: .45; }
 #ver { position: absolute; left: 0; right: 0; bottom: 1em; font-size: .7em; letter-spacing: .15em; color: #ffd9b099; text-align: center; }
 /* mini-games */
 .gm .sh-box { display: none; }
@@ -236,7 +263,7 @@ body:not(.g) #tip, .s #tip { display: none; }
   .item { padding: .6em; } .item .ico, .pack-art { font-size: 1.9em; }
   /* on a phone the sections are a tab bar at the bottom: icon over a short name, all five always visible */
   #shBody { flex: 1; }
-  #shop nav { order: 3; display: grid; grid-template-columns: repeat(5, 1fr); gap: .2em; padding: .35em .3em calc(.35em + env(safe-area-inset-bottom)); border-top: 2px solid #ffb3d433; border-bottom: 0; background: #1c120c; }
+  #shop nav { order: 3; display: grid; grid-template-columns: repeat(6, 1fr); gap: .1em; padding: .35em .3em calc(.35em + env(safe-area-inset-bottom)); border-top: 2px solid #ffb3d433; border-bottom: 0; background: #1c120c; }
   #shop nav button { flex-direction: column; gap: .15em; padding: .45em .1em; border-radius: .6em; font-size: .66em; letter-spacing: .04em; white-space: nowrap; }
   #shop nav button i { font-size: 2em; }
   .sh-box header { padding: .7em 1em; }
@@ -250,7 +277,7 @@ body:not(.g) #tip, .s #tip { display: none; }
 </head>
 <body class=l>
 <canvas id=c></canvas>
-<div id=coins class=hud><span class=coin></span><span id=n>0</span><span id=clk></span><button id=shopBtn aria-label=Negozio title="Negozio (B)">🛒<b class=dot></b></button><button id=camBtn aria-label=Foto title="Foto (P)">📷</button></div>
+<div id=coins class=hud><span class=coin></span><span id=n>0</span><button id=lvl title="Livello del locale">⭐1</button><span id=clk></span><button id=shopBtn aria-label=Negozio title="Negozio (B)">🛒<b class=dot></b></button><button id=camBtn aria-label=Foto title="Foto (P)">📷</button></div>
 <div id=x class=hud><svg viewBox="0 0 36 36"><circle id=r cx=18 cy=18 r=15.9 pathLength=100 /></svg></div>
 <div id=t class=hud><b id=tn></b><span id=tb></span><span class=needs><i class=bar id=bh title=fame></i><i class=bar id=bt title=sete></i><i class=bar id=bj title=benessere></i></span><i id=ti></i></div>
 <div id=m>
@@ -292,11 +319,15 @@ body:not(.g) #tip, .s #tip { display: none; }
     <nav>
       <button data-tab=care><b class=dot></b><i>🥣</i><span id=tabCare>Cibo e cura</span></button><button data-tab=toys><b class=dot></b><i>🧶</i><span id=tabToys>Giochi</span></button>
       <button data-tab=wear><b class=dot></b><i>👒</i><span id=tabWear>Vestiti</span></button><button data-tab=packs><b class=dot></b><i>🃏</i><span id=tabPacks>Carte</span></button>
+      <button data-tab=home><b class=dot></b><i>🏠</i><span id=tabHome>Casa</span></button>
       <button data-tab=album><i>📖</i><span id=tabAlbum>Collezione</span></button>
     </nav>
     <div id=shBody></div>
   </div>
   <div id=pack hidden><div id=cards></div><button id=packOk>Evviva!</button></div>
+  <div id=brew class=ov hidden><div class=g-box><header><b id=bT></b><button id=bX aria-label=Chiudi>✕</button></header><p id=bS></p><div id=bBar><i id=bZone></i><i id=bMark></i></div><button id=bStop>Ferma!</button><button id=bDone hidden>Portalo al cliente</button></div></div>
+  <div id=adopt class=ov hidden><div class=g-box><header><b id=aT></b></header><p id=aP></p><p class=row><button id=aYes>Sì, è il momento</button><button id=aNo>No, resta qui</button></p></div></div>
+  <div id=letter class=ov hidden><div class="g-box letter"><b id=lT></b><p id=lP></p><button id=lOk>Che bello!</button></div></div>
   <div id=game hidden><div class=g-box><header><b id=gT></b><button id=gX aria-label=Chiudi>✕</button></header><div id=gBody></div><p id=gR></p><button id=gAgain hidden>Riprova</button></div></div>
 </div>
 <button id=offer hidden>🎲 <span id=offerT></span></button>
@@ -304,6 +335,10 @@ body:not(.g) #tip, .s #tip { display: none; }
 <p id=tip hidden>Tocca un gatto per andare a coccolarlo · tocca il pavimento per camminare · trascina per guardarti intorno · joystick in basso a sinistra</p>
 <div id=mbtn><button id=snackBtn aria-label=Snack>🐟</button><button id=laserBtn aria-label=Laser>🔴</button><button id=wearBtn aria-label=Vestiti>👒</button></div>
 <p id=toast hidden></p>
+<button id=brewBtn hidden></button>
+<p id=hold class=hud hidden></p>
+<p id=cafeHint hidden>☕ Un cliente aspetta: vai alla macchina del caffè dietro il bancone</p>
+<div id=plBar><b id=plName></b><button id=plRot>↻ Ruota</button><button id=plOk>✔ Metti qui</button><button id=plX>✕</button></div>
 <div id=flash></div>
 <div id=phBar><div id=phF></div><button id=phShot aria-label=Scatta></button><button id=phX aria-label=Esci>✕</button></div>
 <div id=phPrev hidden><img id=phImg alt=""><p><a id=phSave>Salva la foto</a><button id=phClose>Chiudi</button></p></div>

@@ -122,12 +122,12 @@ $('phShot').onclick = () => { $('flash').classList.remove('go'); void $('flash')
 $('phX').onclick = () => photoMode(false);
 $('phClose').onclick = () => { $('phPrev').hidden = true; };
 // inside claude.ai a page may not download on its own: there the viewer is asked to save through the platform
-var DL = null;
-if (window.claude && window.claude.use) window.claude.use('downloads').then((d) => { DL = d; }).catch(() => {});
+var DLS = null;
+if (window.claude && window.claude.use) window.claude.use('downloads').then((d) => { DLS = d; }).catch(() => {});
 $('phSave').addEventListener('click', (e) => {
-  if (!DL || !PHOTO.blob) return; // a plain link download everywhere else
+  if (!DLS || !PHOTO.blob) return; // a plain link download everywhere else
   e.preventDefault();
-  DL.save({ filename: PHOTO.name, data: PHOTO.blob }).then(() => toast(L_('Foto salvata!', 'Photo saved!'))).catch((er) => { if (er && er.code !== 'declined') toast(L_('Qui non posso salvare: tieni premuta la foto per salvarla.', 'Saving is not available here: long-press the photo to save it.')); });
+  DLS.save({ filename: PHOTO.name, data: PHOTO.blob }).then(() => toast(L_('Foto salvata!', 'Photo saved!'))).catch((er) => { if (er && er.code !== 'declined') toast(L_('Qui non posso salvare: tieni premuta la foto per salvarla.', 'Saving is not available here: long-press the photo to save it.')); });
 });
 $('camBtn').onclick = () => photoMode(true);
 addEventListener('keydown', (e) => {

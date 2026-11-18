@@ -7,12 +7,12 @@ const mob = matchMedia('(pointer:coarse)').matches, mem = navigator.deviceMemory
 const keep = (k, v) => { try { localStorage[k] = v; } catch {} };
 let LV, bad;
 try { LV = localStorage.catbar; bad = localStorage.catbarLoad; } catch {}
-LV = LV != null && LV !== '' ? +LV : mob ? (mem > 7 ? 1 : 2) : mem && mem <= 4 ? 2 : 0;
+LV = LV != null && LV !== '' ? +LV : mob ? 2 : mem && mem <= 4 ? 2 : 0; // phones start on Low
 if (bad && LV < 2) keep('catbar', ++LV);
 { const m = /[?&]lv=(\d)/.exec(location.search); if (m) LV = +m[1]; }
 const AA = LV > 1 ? 1 : 4;               // MSAA samples (fur uses alpha-to-coverage with it)
 const SHADOW = LV ? 2048 : 4096;         // sun shadow map
-const MAXSH = [42, 24, 12][LV];          // most fur shells on a cat close to the camera
+const MAXSH = [42, 24, mob ? 10 : 12][LV];          // most fur shells on a cat close to the camera
 const VOLN = [32, 20, 10][LV];           // light shaft steps
 const SSAO = LV < 2;
 const NDUST = [1400, 900, 400][LV];

@@ -8,7 +8,7 @@
 <style>
 /* The class on <body> is the state of the page:
    l = loading, m = menu, g = in the café (g p while the mouse is captured), l e = failed to start */
-html { background: #1c120c; }
+html { background: #1c120c; touch-action: none; }
 body {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%; margin: 0; overflow: hidden;
   background: radial-gradient(#4a2e1c, #1c120c 70%);
@@ -188,9 +188,11 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 #offer { position: absolute; left: 0; top: 0; z-index: 2; padding: .35em .7em; border-radius: 1.2em; font-size: .85em; background: #fff4e6; color: #3a1a10; box-shadow: 0 .3em 1em #0008, 0 0 0 3px #ff5ea8; transform-origin: 50% 100%; animation: none; }
 #offer[hidden], body:not(.g) #offer, .s #offer { display: none; }
 /* touch controls */
-#joy { position: absolute; display: none; width: 7em; height: 7em; margin: -3.5em; border-radius: 50%; background: #ffffff1a; box-shadow: inset 0 0 0 2px #ffffff55; pointer-events: none; }
-#joy i { position: absolute; left: 50%; top: 50%; width: 2.8em; height: 2.8em; margin: -1.4em; border-radius: 50%; background: #ffffff88; }
-#joy.on { display: block; }
+#joyBase { position: absolute; left: max(1.2em, env(safe-area-inset-left)); bottom: 1.4em; display: none; width: 7.5em; height: 7.5em; border-radius: 50%; background: #ffffff14; box-shadow: inset 0 0 0 2px #ffffff40; pointer-events: none; }
+#joyBase i { position: absolute; left: 50%; top: 50%; width: 3em; height: 3em; margin: -1.5em; border-radius: 50%; background: #ffffff66; box-shadow: 0 .2em .6em #0006; }
+@media (pointer: coarse) { .g #joyBase { display: block; } .s #joyBase { display: none; } }
+#tip { position: absolute; left: 50%; top: 4.2em; transform: translateX(-50%); width: min(26em, 90vw); padding: .7em 1em; border-radius: .8em; background: #1c120ce6; font-size: .8em; text-align: center; pointer-events: none; box-shadow: 0 .3em 1em #0008; }
+body:not(.g) #tip, .s #tip { display: none; }
 #mbtn { position: absolute; right: 1.2em; bottom: 6.6em; display: none; flex-direction: column; gap: .6em; }
 #mbtn button { width: 3.2em; height: 3.2em; padding: 0; border-radius: 50%; font-size: 1.2em; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffb3d4, 0 .3em 1em #0009; }
 @media (pointer: coarse) { .g #mbtn { display: flex; } .s #mbtn, .s #pet { display: none !important; } }
@@ -258,7 +260,8 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
   <div id=game hidden><div class=g-box><header><b id=gT></b><button id=gX aria-label=Chiudi>✕</button></header><div id=gBody></div><p id=gR></p><button id=gAgain hidden>Riprova</button></div></div>
 </div>
 <button id=offer hidden>🎲 <span id=offerT></span></button>
-<div id=joy><i></i></div>
+<div id=joyBase><i></i></div>
+<p id=tip hidden>Tocca un gatto per andare a coccolarlo · tocca il pavimento per camminare · trascina per guardarti intorno · joystick in basso a sinistra</p>
 <div id=mbtn><button id=snackBtn aria-label=Snack>🐟</button><button id=laserBtn aria-label=Laser>🔴</button><button id=wearBtn aria-label=Vestiti>👒</button></div>
 <pre id=i></pre>
 <script>

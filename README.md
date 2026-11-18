@@ -60,8 +60,9 @@ browser o usa Chrome / Edge.
   papillon, bandana, sciarpa) e vestitini (maglioncino, mantello da supereroe, tutù). Uno per testa, viso, collo e corpo
 - **Grafica**: antialiasing temporale, luce che rimbalza dalle chiazze di sole, riflessi sul pavimento, sfocatura di
   profondità quando guardi un gatto, pelo più fitto
-- **Telefono**: joystick a sinistra, sguardo a destra, tocca un gatto per accarezzarlo, pulsanti per snack, laser e
-  vestiti, negozio a tutto schermo, funziona anche in verticale
+- **Telefono**: tocca un gatto e ci vai da solo ad accarezzarlo; tocca il pavimento per camminare lì; trascina per
+  guardarti intorno; joystick fisso in basso a sinistra; pulsanti per snack, laser e vestiti; negozio a tutto schermo;
+  funziona anche in verticale. I telefoni partono col dettaglio Basso per restare fluidi
 - La versione del gioco è scritta in basso nella schermata iniziale
 
 | | |
@@ -89,8 +90,8 @@ browser o usa Chrome / Edge.
 | Statistiche | `H` |
 | Dettaglio | **Basso**, **Medio** o **Alto** nel menù (ricarica la pagina) |
 
-**Sul touch screen:** trascina a sinistra per camminare, a destra per guardarti intorno, e tieni premuto il pulsante
-con la zampa per accarezzare.
+**Sul touch screen:** tocca un gatto per andare ad accarezzarlo, tocca il pavimento per camminare, trascina per
+guardarti intorno, oppure usa il joystick in basso a sinistra.
 
 ## Come funziona
 

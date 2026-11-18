@@ -6,7 +6,7 @@ const canvas = $('c'), info = $('i'), body = document.body;
 // English page text when the browser is not Italian (the page itself is written in Italian)
 if (!IT) {
   document.documentElement.lang = 'en';
-  const T = { gAgain: 'Try again', s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
+  const T = { tip: 'Tap a cat to go and pet it · tap the floor to walk there · drag to look around · joystick bottom-left', gAgain: 'Try again', s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
     tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabPacks: 'Card packs', tabAlbum: 'Collection' };
   for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
   const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
@@ -176,6 +176,29 @@ let coins = 30; try { if (localStorage.catbarCoins != null) coins = +localStorag
 $('n').textContent = coins;
 function movePlayer(dt) {
   let f = (KEY.KeyW || KEY.ArrowUp ? 1 : 0) - (KEY.KeyS || KEY.ArrowDown ? 1 : 0) + TOUCH.f, s = (KEY.KeyD || KEY.ArrowRight ? 1 : 0) - (KEY.KeyA || KEY.ArrowLeft ? 1 : 0) + TOUCH.s;
+  if (f || s) PL.goto = null;
+  else if (PL.goto) { // walking on its own to a tapped spot or cat
+    const g = PL.goto; if (g.cat) { g.x = g.cat.sp[1][0]; g.z = g.cat.sp[1][2]; }
+    const dx = g.x - PL.x, dz = g.z - PL.z, d = hypot(dx, dz), stop = g.cat ? 0.95 : 0.2;
+    g.t += dt;
+    if (d < stop || g.t > 12) { PL.goto = null; if (g.cat && d < 1.5) tapCat(g.cat); }
+    else {
+      // steer around furniture on the way
+      let ux = dx / d, uz = dz / d;
+      for (const c of COL) {
+        let vx, vz, e;
+        if (c.r !== undefined) { vx = PL.x - c.x; vz = PL.z - c.z; e = hypot(vx, vz) - c.r - 0.3; }
+        else { vx = PL.x - clamp(PL.x, c.x0, c.x1); vz = PL.z - clamp(PL.z, c.z0, c.z1); e = hypot(vx, vz) - 0.3; }
+        const l = hypot(vx, vz) || 1;
+        if (e < 0.45 && !(g.cat && hypot(c.x - g.x, c.z - g.z) < 0.1)) { const k = (0.45 - e) * 2.2; ux += (vx / l) * k - (vz / l) * k * 0.6; uz += (vz / l) * k + (vx / l) * k * 0.6; }
+      }
+      PL.yaw += wrapA(atan2(ux, -uz) - PL.yaw) * min(1, dt * 6);
+      if (g.cat) PL.pitch = damp(PL.pitch, -0.45, 3, dt);
+      f = clamp((d - stop) / 0.4, 0.3, 1);
+      g.lx = g.lx ?? PL.x; g.lz = g.lz ?? PL.z;
+      if (g.t > 1.5) { if (hypot(PL.x - g.lx, PL.z - g.lz) < 0.15) { PL.goto = null; if (g.cat && d < 1.8) tapCat(g.cat); } else { g.lx = PL.x; g.lz = PL.z; g.t = 0.01; } } // stuck against something
+    }
+  }
   const l = hypot(f, s); if (l > 1) { f /= l; s /= l; }
   const sp = (KEY.ShiftLeft || KEY.ShiftRight ? 2.6 : 1.5) * (PL.crouch > 0.5 ? 0.55 : 1);
   const fx = sin(PL.yaw), fz = -cos(PL.yaw), rx_ = cos(PL.yaw), rz_ = sin(PL.yaw);
@@ -228,6 +251,7 @@ document.addEventListener('pointerlockchange', () => {
   else if (inGame() && !SHOPOPEN) { body.className = 'm'; PET.mouse = false; }
 });
 function enter() {
+  if (mob && !TIPPED) { TIPPED = true; const t = $('tip'); t.hidden = false; setTimeout(() => (t.hidden = true), 9000); }
   body.className = 'g'; $('d').textContent = L_('Torna dai gatti', 'Back to the cats');
   if (!mob) lockMouse();
   if (typeof startAudio === 'function') startAudio();
@@ -239,28 +263,51 @@ $('o').onclick = () => { body.className = 'm'; };
   const lv = 2 - i; if (lv === LV) b.className = 'on';
   b.onclick = () => { keep('catbar', lv); location.reload(); };
 });
-// touch: left half walks, right half looks, the paw button pets
-canvas.addEventListener('touchstart', (e) => {
-  if (!inGame()) return;
-  for (const t of e.changedTouches) {
-    if (t.clientX < innerWidth / 2 && !TOUCH.move) { TOUCH.move = { id: t.identifier, x: t.clientX, y: t.clientY }; const j = $('joy'); j.style.left = t.clientX + 'px'; j.style.top = t.clientY + 'px'; j.classList.add('on'); j.firstChild.style.transform = ''; }
-    else if (!TOUCH.look) {
-      TOUCH.look = { id: t.identifier, x: t.clientX, y: t.clientY };
-      // touching a cat pets it (as long as the finger stays down)
-      const c = pickAt(t.clientX, t.clientY); if (c) { PET.force = c; PET.touch = true; TOUCH.look.pet = true; }
-    }
-  }
-  e.preventDefault();
+// touch (pointer events, so it also works inside embedded pages):
+//   tap a cat -> walk up to it and pet it   tap the floor -> walk there   drag -> look around
+//   hold a finger on a cat -> keep petting   joystick in the bottom-left corner -> walk freely
+let TIPPED = false;
+const TP = new Map(); // active touch pointers
+const joyBase = () => { const r = $('joyBase').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2, r.width / 2]; };
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' || !inGame()) return;
+  e.preventDefault(); try { canvas.setPointerCapture(e.pointerId); } catch {}
+  const [jx, jy, jr] = joyBase();
+  const joy = jr > 0 && hypot(e.clientX - jx, e.clientY - jy) < jr * 1.6 && ![...TP.values()].some((p) => p.joy);
+  const p = { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, joy, drag: false, cat: null };
+  TP.set(e.pointerId, p);
+  if (joy) { PL.goto = null; return; }
+  const c = pickAt(e.clientX, e.clientY, 0.09);
+  if (c && hypot(c.sp[1][0] - PL.x, c.sp[1][2] - PL.z) < REACH) { p.cat = c; PET.force = c; PET.touch = true; }
 }, { passive: false });
-canvas.addEventListener('touchmove', (e) => {
-  for (const t of e.changedTouches) {
-    if (TOUCH.move && t.identifier === TOUCH.move.id) { const dx = clamp(t.clientX - TOUCH.move.x, -50, 50), dy = clamp(t.clientY - TOUCH.move.y, -50, 50); TOUCH.s = dx / 50; TOUCH.f = -dy / 50; $('joy').firstChild.style.transform = `translate(${dx}px, ${dy}px)`; }
-    if (TOUCH.look && t.identifier === TOUCH.look.id) { PL.yaw += (t.clientX - TOUCH.look.x) * 0.005; PL.pitch = clamp(PL.pitch - (t.clientY - TOUCH.look.y) * 0.005, -1.4, 1.4); TOUCH.look.x = t.clientX; TOUCH.look.y = t.clientY; }
-  }
+canvas.addEventListener('pointermove', (e) => {
+  const p = TP.get(e.pointerId); if (!p) return;
   e.preventDefault();
+  if (p.joy) {
+    const [jx, jy, jr] = joyBase(), dx = clamp(e.clientX - jx, -jr, jr), dy = clamp(e.clientY - jy, -jr, jr);
+    TOUCH.s = dx / jr; TOUCH.f = -dy / jr; $('joyBase').firstChild.style.transform = `translate(${dx}px, ${dy}px)`; return;
+  }
+  if (!p.drag && hypot(e.clientX - p.x0, e.clientY - p.y0) > 14) { p.drag = true; if (p.cat) { PET.touch = false; PET.force = null; p.cat = null; } }
+  if (p.drag) { PL.yaw += (e.clientX - p.x) * 0.006; PL.pitch = clamp(PL.pitch - (e.clientY - p.y) * 0.006, -1.4, 1.4); if (PL.goto && !PL.goto.cat) PL.goto = null; }
+  p.x = e.clientX; p.y = e.clientY;
 }, { passive: false });
-const tEnd = (e) => { for (const t of e.changedTouches) { if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.move = null; TOUCH.f = TOUCH.s = 0; $('joy').classList.remove('on'); } if (TOUCH.look && t.identifier === TOUCH.look.id) { TOUCH.look = null; PET.touch = false; PET.force = null; } } };
-canvas.addEventListener('touchend', tEnd); canvas.addEventListener('touchcancel', tEnd);
+const pEnd = (e) => {
+  const p = TP.get(e.pointerId); if (!p) return; TP.delete(e.pointerId);
+  if (p.joy) { TOUCH.f = TOUCH.s = 0; $('joyBase').firstChild.style.transform = ''; return; }
+  if (p.cat) { PET.touch = false; }
+  if (p.drag || e.type === 'pointercancel') return;
+  // a tap
+  const c = p.cat || pickAt(p.x0, p.y0, 0.12, 15);
+  if (c) tapCat(c);
+  else { const hit = floorAt(p.x0, p.y0); if (hit) PL.goto = { x: hit[0], z: hit[1], cat: null, t: 0 }; }
+};
+canvas.addEventListener('pointerup', pEnd); canvas.addEventListener('pointercancel', pEnd);
+// tapping a cat: close enough -> a petting session that runs on its own, otherwise walk to it first
+function tapCat(c) {
+  const d = hypot(c.sp[1][0] - PL.x, c.sp[1][2] - PL.z);
+  if (d < 1.4) { PET.force = c; PET.auto = PET_TIME + 0.5; PL.goto = null; }
+  else PL.goto = { cat: c, x: c.x, z: c.z, t: 0 };
+}
 $('snackBtn').onclick = () => giveSnack(PET.cat || lastTarget);
 $('laserBtn').onclick = () => { if (SAVE.laser) LASER.on = !LASER.on; else openShop('toys'); };
 $('wearBtn').onclick = () => { wearCat = PET.cat || lastTarget || wearCat; openShop('wear'); };
@@ -269,16 +316,16 @@ $('pet').addEventListener('pointerup', () => { PET.mouse = false; });
 $('pet').addEventListener('pointerleave', () => { PET.mouse = false; });
 
 // ---------------------------------------------------------------- looking at and petting cats
-const PET = { touch: false, force: null, on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
+const PET = { auto: 0, touch: false, force: null, on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
 const PET_TIME = 1.6, COOLDOWN = 10, REACH = 2.5;
 const ring = $('r'), xh = $('x'), tl = $('t');
 let lastTarget = null;
-function pickCat(ox, oy, oz, dx, dy, dz) {
-  let best = null, bt = REACH;
+function pickCat(ox, oy, oz, dx, dy, dz, extra = 0, far = REACH) {
+  let best = null, bt = far;
   for (const c of CATS) {
     const rs = [0.11, 0.1, 0.085];
     for (let k = 0; k < 3; k++) {
-      const s = c.sp[k], r = rs[k] * c.scale + 0.03, lx = s[0] - ox, ly = s[1] - oy, lz = s[2] - oz;
+      const s = c.sp[k], r = rs[k] * c.scale + 0.03 + extra, lx = s[0] - ox, ly = s[1] - oy, lz = s[2] - oz;
       const b = lx * dx + ly * dy + lz * dz, d2 = lx * lx + ly * ly + lz * lz - b * b;
       if (d2 > r * r) continue;
       const t = b - sqrt(r * r - d2);
@@ -289,11 +336,13 @@ function pickCat(ox, oy, oz, dx, dy, dz) {
 }
 // the cat under a point of the screen (touch)
 const PK0 = new Float32Array(4), PK1 = new Float32Array(4);
-function pickAt(cx, cy) {
+function pickAt(cx, cy, extra = 0, far = REACH) { const r = rayAt(cx, cy); return pickCat(PL.x, PL.eye, PL.z, r[0], r[1], r[2], extra, far); }
+function floorAt(cx, cy) { const r = rayAt(cx, cy); if (r[1] > -0.02) return null; const t = -PL.eye / r[1]; return [clamp(PL.x + r[0] * t, -RX + 0.35, RX - 0.35), clamp(PL.z + r[2] * t, -RZ + 0.35, RZ - 0.35)]; }
+function rayAt(cx, cy) {
   const nx = (cx / innerWidth) * 2 - 1, ny = 1 - (cy / innerHeight) * 2, m = IVP;
   for (const [o, z] of [[PK0, 0], [PK1, 1]]) for (let r = 0; r < 4; r++) o[r] = m[r] * nx + m[4 + r] * ny + m[8 + r] * z + m[12 + r];
   const ax = PK0[0] / PK0[3], ay = PK0[1] / PK0[3], az = PK0[2] / PK0[3], bx = PK1[0] / PK1[3] - ax, by = PK1[1] / PK1[3] - ay, bz = PK1[2] / PK1[3] - az, l = hypot(bx, by, bz);
-  return pickCat(PL.x, PL.eye, PL.z, bx / l, by / l, bz / l);
+  return [bx / l, by / l, bz / l];
 }
 function popCoin(n = 1) {
   coins += n; keep('catbarCoins', coins); $('n').textContent = coins;
@@ -317,11 +366,12 @@ function updatePet(dt, fx, fy, fz) {
   if (SNACK.t > 0) SNACK.t -= dt;
   if (KEY.KeyF && !PET.fDown && target) giveSnack(target);
   PET.fDown = !!KEY.KeyF;
-  const holding = PET.mouse || PET.key || PET.touch;
+  if (PET.auto > 0) PET.auto -= dt;
+  const holding = PET.mouse || PET.key || PET.touch || PET.auto > 0;
   if (holding) { // start on the cat under the crosshair, then stay on it while the button is held
     const start = target || PET.force;
     if (!PET.on && start) { if (start !== PET.cat) { PET.cat = start; PET.t = 0; } PET.on = true; }
-  } else PET.on = false;
+  } else { PET.on = false; PET.force = null; }
   if (PET.on && PET.cat) { // keep it in view: the camera turns gently towards it (crouching moves the eye)
     const c = PET.cat, dx = c.sp[1][0] - PL.x, dz = c.sp[1][2] - PL.z, dy = c.sp[1][1] - PL.eye;
     const want = atan2(dy, hypot(dx, dz)) + 0.12;
@@ -355,7 +405,7 @@ function updatePet(dt, fx, fy, fz) {
       $('tn').textContent = show.name; $('tb').textContent = show.breed;
       for (const [id, v] of [['bh', 1 - show.hunger], ['bt', 1 - show.thirst], ['bj', show.joy]]) $(id).style.setProperty('--v', v.toFixed(2));
       const need = show.hunger > 0.6 ? L_('ha fame', 'is hungry') : show.thirst > 0.6 ? L_('ha sete', 'is thirsty') : '';
-      $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tieni premuta la zampa: coccola', 'hold the paw button: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack && !mob ? L_(' · F: snack', ' · F: treat') : '') + (typeof OFFER !== 'undefined' && OFFER && OFFER.cat === show && !mob ? L_(' · G: gioca!', ' · G: play!') : ''));
+      $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tocca il gatto: coccola', 'tap the cat: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack && !mob ? L_(' · F: snack', ' · F: treat') : '') + (typeof OFFER !== 'undefined' && OFFER && OFFER.cat === show && !mob ? L_(' · G: gioca!', ' · G: play!') : ''));
     }
   }
   for (let k = 0; k < NH; k++) if (PTD[k * 4 + 3] > 0) { PTD[k * 4 + 3] += dt; if (PTD[k * 4 + 3] > 1.6) PTD[k * 4 + 3] = 0; }
@@ -508,8 +558,8 @@ async function grab(n = 1) { // ?shot: draw n frames (so TAA settles) and copy t
 
 // ---------------------------------------------------------------- frame loop
 initCats();
-let scale = [1, 0.85, 0.7][LV], last = performance.now(), simT = 0, ftAvg = 16, ftN = 0;
-const DPR = min(devicePixelRatio || 1, 2);
+let scale = mob ? 0.6 : [1, 0.85, 0.7][LV], last = performance.now(), simT = 0, ftAvg = 16, ftN = 0;
+const DPR = min(devicePixelRatio || 1, mob ? 1.5 : 2);
 const fitSize = () => { const s = SHOT ? 1 : DPR * scale; resize(canvas.clientWidth * s, canvas.clientHeight * s); };
 if (SHOT) window.__cb = { VPm, get OFFER() { return OFFER; }, audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
 function tick(dt) {
@@ -547,9 +597,9 @@ function draw(fx, fy, fz) {
 }
 function loop(now) {
   requestAnimationFrame(loop);
-  const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
+  const dt = clamp((now - last) / 1000, 0, 0.1); last = now;
   ftAvg += (dt * 1000 - ftAvg) * 0.05;
-  if (++ftN > 40) { ftN = 0; scale = ftAvg > 19 ? max(0.45, scale - 0.1) : ftAvg < 13 && scale < 1 ? min(1, scale + 0.05) : scale; }
+  if (++ftN > 40) { ftN = 0; scale = ftAvg > 19 ? max(0.35, scale - 0.1) : ftAvg < 13 && scale < 1 ? min(1, scale + 0.05) : scale; }
   const [fx, fy, fz] = tick(dt);
   if (SHOT) return; // ?shot draws only when grab() asks
   draw(fx, fy, fz);

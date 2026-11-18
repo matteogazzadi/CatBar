@@ -454,6 +454,75 @@ acc('bell', 2, (m) => {
   sphere(m, tr(M4(), 0.205, 0.21, 0), 0.009, hex(0xf2c040), METAL, 10);
 });
 
+acc('beanie', 3, (m) => {
+  const M = rz(tr(M4(), 0.207, 0.338, 0), 0.22), c = hex(0x3a7ac0);
+  sphere(m, mat(M, (q) => sc(q, 1.05, 0.9, 1.05)), 0.04, c, YARN, 18);
+  torus(m, mat(M, (q) => tr(q, 0, 0.006, 0)), 0.04, 0.008, hex(0xf0f0f0), YARN, 24, 8);
+  sphere(m, mat(M, (q) => tr(q, 0, 0.042, 0)), 0.014, hex(0xf0f0f0), YARN, 10);
+});
+acc('tophat', 3, (m) => {
+  const M = rz(tr(M4(), 0.205, 0.352, 0.012), 0.18), k = hex(0x181818);
+  lathe(m, M, [[0, -0.002], [0.05, -0.002], [0.052, 0.003], [0, 0.004]], 24, k, FABRIC);
+  cyl(m, M, 0.027, 0.06, k, FABRIC, 20, 2, 0.029);
+  cyl(m, mat(M, (q) => tr(q, 0, 0.004, 0)), 0.0285, 0.012, hex(0xc0202a), FABRIC, 20, 0);
+});
+acc('flowers', 3, (m) => {
+  const M = rz(tr(M4(), 0.205, 0.345, 0), 0.15);
+  for (let k = 0; k < 12; k++) {
+    const a = (k / 12) * TAU, x = cos(a) * 0.038, z = sin(a) * 0.045, c = hex([0xff7aa0, 0xffffff, 0xffd040, 0xb08ae0][k % 4]);
+    for (let p = 0; p < 5; p++) { const b = (p / 5) * TAU; sphere(m, mat(M, (q) => tr(q, x + cos(b) * 0.006, 0.004, z + sin(b) * 0.006)), 0.0045, c, PLAIN, 6); }
+    sphere(m, mat(M, (q) => tr(q, x, 0.006, z)), 0.003, hex(0xffc830), PLAIN, 5);
+    leaf(m, mat(M, (q) => ry(tr(q, x, 0.0, z), -a + 0.6)), 0.02, 0.01, hex(0x4a9a3a), 0.1, 0.1);
+  }
+});
+acc('earbow', 3, (m) => {
+  const c = hex(0xff5aa0), M = rx(tr(M4(), 0.212, 0.362, 0.05), -0.5);
+  for (const s of [-1, 1]) lathe(m, mat(M, (q) => rz(q, s * PI / 2)), [[0, 0], [0.004, 0], [0.012, 0.018], [0, 0.02]], 10, c, FABRIC);
+  sphere(m, M, 0.005, c, FABRIC, 8);
+});
+acc('sunglasses', 3, (m) => {
+  const f = hex(0x111111);
+  for (const s of [-1, 1]) {
+    const M = rz(ry(tr(M4(), 0.274, 0.322, s * 0.029), s * 0.35 + PI / 2), 0);
+    lathe(m, rx(mat(M, (q) => q), PI / 2), [[0, 0], [0.0155, 0], [0.0155, 0.002], [0, 0.002]], 18, hex(0x202830), GLASS);
+    torus(m, rx(mat(M, (q) => q), PI / 2), 0.0155, 0.0018, f, METAL, 18, 5);
+    cyl(m, rz(tr(M4(), 0.27, 0.324, s * 0.044), PI / 2 + 0.05), 0.0014, 0.05, f, METAL, 5, 0);
+  }
+  cyl(m, rx(tr(M4(), 0.281, 0.326, -0.014), PI / 2), 0.0016, 0.028, f, METAL, 5, 0);
+});
+acc('bandana', 2, (m) => {
+  const c = hex(0xd03030);
+  torus(m, neckM(), 0.05, 0.007, c, FABRIC, 28, 6);
+  lathe(m, sc(rz(tr(M4(), 0.198, 0.208, 0), -0.4), 0.45, 1, 1.4), [[0.03, 0], [0.001, -0.05], [0, -0.05]], 16, c, FABRIC);
+});
+acc('pearls', 2, (m) => { for (let k = 0; k < 22; k++) { const a = (k / 22) * TAU, M = mat(neckM(), (q) => tr(q, cos(a) * 0.051, 0, sin(a) * 0.051)); sphere(m, M, 0.0055, hex(0xf6f0e6), CERAMIC, 8); } });
+acc('heart', 2, (m) => {
+  torus(m, neckM(), 0.049, 0.0035, hex(0xd0a040), METAL, 28, 5);
+  const M = rz(tr(M4(), 0.205, 0.207, 0), -0.4), g = hex(0xe0b040);
+  for (const s of [-1, 1]) sphere(m, mat(M, (q) => tr(q, 0, 0.004, s * 0.005)), 0.006, g, METAL, 8);
+  lathe(m, mat(M, (q) => rx(tr(q, 0, 0.004, 0), PI)), [[0.009, 0], [0, 0.012]], 10, g, METAL);
+});
+// clothes on the chest bone: a knitted sweater, a cape; a tutu on the hips
+const bodyM = (x, y) => sc(rz(tr(M4(), x, y, 0), -PI / 2), 1, 1, 0.84); // lathe axis along the body
+acc('sweater', 1, (m) => {
+  const c = hex(0xc0303a), M = bodyM(0.06, 0.19);
+  lathe(m, M, [[0.104, -0.075], [0.112, -0.04], [0.113, 0.02], [0.108, 0.07]], 28, c, YARN);
+  for (const y of [-0.075, 0.07]) torus(m, mat(M, (q) => tr(q, 0, y, 0)), y < 0 ? 0.105 : 0.109, 0.007, hex(0xf2efe8), YARN, 28, 6);
+  for (const y of [-0.03, 0.0, 0.03]) torus(m, mat(M, (q) => tr(q, 0, y, 0)), 0.1135, 0.003, hex(0xf2efe8), YARN, 28, 4);
+});
+acc('cape', 1, (m) => {
+  const c = hex(0xc81e28);
+  for (const s of [1, -1]) m.grid(M4(), 10, 6, (u, v) => {
+    const x = 0.13 - u * 0.24, a = (v - 0.5) * 2.4, r = 0.1 + u * 0.012;
+    return [x, 0.19 + cos(a) * r - u * 0.01, sin(a) * r * 1.05, 0, cos(a) * s, sin(a) * s];
+  }, s > 0 ? c : shade(c, 0.7), FABRIC);
+  torus(m, neckM(), 0.05, 0.005, hex(0xf0c040), METAL, 24, 5);
+});
+acc('tutu', 0, (m) => {
+  const c = hex(0xff9ac8), M = bodyM(-0.04, 0.17);
+  for (const k of [0, 1]) lathe(m, mat(M, (q) => tr(q, 0, k * 0.012, 0)), [[0.09, -0.006], [0.14 - k * 0.012, 0.0], [0.09, 0.006]], 30, shade(c, 1 - k * 0.1), FABRIC);
+});
+
 // three yarn balls to start with; more come from the shop
 prop('kibble', (m) => { for (let i = 0; i < 26; i++) { const a = rr(0, TAU), r = sqrt(rnd()) * 0.045; sphere(m, place(cos(a) * r, 0.03 - r * 0.35 + rr(0, 0.006), sin(a) * r, rr(0, 6)), 0.0075, jitter(hex(0x8a5230), 0.25), PLAIN, 6, 0.75); } });
 prop('water', (m) => lathe(m, M4(), [[0.062, 0], [0, 0.0005]], 18, hex(0x6a8a98), GLASS));

@@ -6,7 +6,7 @@ Sei dentro il Cat Bar: il sole del pomeriggio entra dalle finestre, al bancone c
 giocano, dormono, si lavano e miagolano. Dal locale non si esce, ma puoi girare dove vuoi. Se tieni premuto il click
 su un gatto lo accarezzi: fa le fusa e tu guadagni una moneta.
 
-Non ci sono immagini, modelli 3D né file audio: tutto è generato dal codice. Il gioco è un **unico file HTML di circa 125 KB**.
+Non ci sono immagini, modelli 3D né file audio: tutto è generato dal codice. Il gioco è un **unico file HTML di circa 150 KB**.
 
 ![Il bancone con l'insegna al neon](.github/screenshots/bar.jpg)
 
@@ -52,6 +52,17 @@ browser o usa Chrome / Edge.
 - **Coccole vive**: una mano accarezza il gatto, che reagisce a modo suo: strofina la testa, impasta con le zampe,
   inarca la schiena con la coda dritta o si rotola a pancia in su
 - **Lingua**: italiano se il browser è in italiano, altrimenti inglese
+- **Mini giochi**: ogni tanto un gatto mostra un 🎲 sopra la testa. Avvicinati e premi `G` (sul telefono tocca
+  l'icona): ti sfida a **Tris** o a **Pong col gomitolo** (la sua zampa contro la tua mano). Vincendo prendi monete e
+  a volte un accessorio che il negozio non vende (occhiali da sole, aureola)
+- **Vestiti** (tasto `V` guardando un gatto, o la scheda nel negozio): cappellini (berretto di lana, cilindro, fiocco,
+  coroncina di fiori, Natale, elfo, strega, renna, corona), collanine (perle, medaglietta a cuore, campanellino,
+  papillon, bandana, sciarpa) e vestitini (maglioncino, mantello da supereroe, tutù). Uno per testa, viso, collo e corpo
+- **Grafica**: antialiasing temporale, luce che rimbalza dalle chiazze di sole, riflessi sul pavimento, sfocatura di
+  profondità quando guardi un gatto, pelo più fitto
+- **Telefono**: joystick a sinistra, sguardo a destra, tocca un gatto per accarezzarlo, pulsanti per snack, laser e
+  vestiti, negozio a tutto schermo, funziona anche in verticale
+- La versione del gioco è scritta in basso nella schermata iniziale
 
 | | |
 |---|---|
@@ -70,6 +81,8 @@ browser o usa Chrome / Edge.
 | Negozio | `B` |
 | Dare uno snack | `F` guardando un gatto |
 | Puntatore laser | `L` (dopo averlo comprato) |
+| Vestire un gatto | `V` guardandolo |
+| Mini gioco | `G` vicino al gatto col 🎲 |
 | Accovacciarsi | Tieni premuto `C` (succede da solo quando accarezzi un gatto a terra) |
 | Menù | `Esc` |
 | Audio sì / no | `M` |
@@ -117,6 +130,7 @@ npm run build
 | [`source/src/shaders.js`](source/src/shaders.js) | L'aspetto: materiali, luce del sole, pelo e mantelli, occhi, raggi di luce, bloom e colore finale (WGSL) |
 | [`source/src/main.js`](source/src/main.js) | Il renderer, la telecamera, i comandi, le coccole e le monete |
 | [`source/src/shop.js`](source/src/shop.js) | Negozio, cibo e cura, pacchetti di carte, collezione |
+| [`source/src/games.js`](source/src/games.js) | Mini giochi: Tris e Pong col gomitolo |
 | [`source/src/audio.js`](source/src/audio.js) | Musica, miagolii, fusa e suono della moneta |
 | [`source/src/quality.js`](source/src/quality.js) | I livelli di dettaglio |
 | [`source/src/math.js`](source/src/math.js) | Numeri casuali, matrici e funzioni per costruire le mesh |

@@ -35,6 +35,7 @@ h1 {
 }
 h1 small { display: block; margin-top: .35em; font: 700 .2em/1 system-ui, sans-serif; letter-spacing: .3em; text-transform: uppercase; color: #ffd9b0; -webkit-text-fill-color: #ffd9b0; }
 p { margin: 0; }
+[hidden] { display: none !important; }
 #a { display: grid; width: 28em; max-width: 100%; }
 #a > * { grid-area: 1/1; transition: opacity .8s, visibility .8s; }
 #s, #q, #k, #h { font-size: .8em; letter-spacing: .12em; text-transform: uppercase; }
@@ -131,6 +132,10 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 .item p { font-size: .75em; font-weight: 600; color: #e8d2c0; flex: 1; }
 .item small { font-size: .7em; color: #ffb3d4; }
 .item button { justify-content: center; padding: .55em; font-size: .85em; }
+.item.worn { box-shadow: inset 0 0 0 2px #ffb3d4; }
+.item button.on { background: linear-gradient(#ffd0e6, #ff5ea8); }
+#wearSel { margin-left: .4em; padding: .3em .5em; border-radius: .4em; border: 0; font: inherit; background: #fff4e6; color: #3a1a10; max-width: 100%; }
+.count small { display: block; margin-top: .3em; font-weight: 600; color: #e8d2c0; }
 .item button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .pk.xmas { background: linear-gradient(160deg, #6a1a1a, #1a4a2a); }
 .pk.classic { background: linear-gradient(160deg, #4a2a5a, #2a3a6a); }
@@ -164,6 +169,44 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 .card.big em { font-size: .7em; font-style: normal; color: #ffe27a; display: flex; align-items: center; gap: .3em; }
 .card.big em .coin { width: 1em; height: 1em; }
 #ver { position: absolute; left: 0; right: 0; bottom: 1em; font-size: .7em; letter-spacing: .15em; color: #ffd9b099; text-align: center; }
+/* mini-games */
+.gm .sh-box { display: none; }
+#game { position: absolute; inset: 0; display: grid; place-items: center; padding: 1em; }
+#game[hidden] { display: none; }
+.g-box { display: flex; flex-direction: column; align-items: center; gap: .8em; width: min(26em, 100%); max-height: 100%; overflow: auto; padding: 1em; border-radius: 1em; background: #2a1a12f2; box-shadow: 0 1em 3em #000a, inset 0 0 0 2px #ffb3d433; }
+.g-box header { display: flex; align-items: center; gap: 1em; width: 100%; }
+#gT { flex: 1; font: italic 900 1.3em Georgia, serif; color: #ffd0e6; }
+#gX { padding: .5em .9em; background: none; box-shadow: none; color: #fff4e6; }
+.g-box > * { flex-shrink: 0; }
+#pongC { position: relative; filter: none !important; transform: none !important; opacity: 1 !important; max-height: calc(100vh - 12em); width: auto !important; height: min(420px, calc(100vh - 12em)); }
+#gR { min-height: 1.4em; text-align: center; color: #ffe27a; }
+.ttt { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4em; width: min(18em, 80vw); aspect-ratio: 1; }
+.ttt button { padding: 0; font-size: 2.6em; background: #3a2418; color: #fff4e6; box-shadow: inset 0 0 0 2px #ffffff1a; }
+.ttt button.X { color: #7ad0ff; } .ttt button.O { background: #4a2a22; }
+#pongC { width: min(300px, 80vw); aspect-ratio: 300 / 420; border-radius: .6em; touch-action: none; cursor: none; }
+.gHelp { font-size: .7em; color: #e8d2c0; text-align: center; }
+#offer { position: absolute; left: 0; top: 0; z-index: 2; padding: .35em .7em; border-radius: 1.2em; font-size: .85em; background: #fff4e6; color: #3a1a10; box-shadow: 0 .3em 1em #0008, 0 0 0 3px #ff5ea8; transform-origin: 50% 100%; animation: none; }
+#offer[hidden], body:not(.g) #offer, .s #offer { display: none; }
+/* touch controls */
+#joy { position: absolute; display: none; width: 7em; height: 7em; margin: -3.5em; border-radius: 50%; background: #ffffff1a; box-shadow: inset 0 0 0 2px #ffffff55; pointer-events: none; }
+#joy i { position: absolute; left: 50%; top: 50%; width: 2.8em; height: 2.8em; margin: -1.4em; border-radius: 50%; background: #ffffff88; }
+#joy.on { display: block; }
+#mbtn { position: absolute; right: 1.2em; bottom: 6.6em; display: none; flex-direction: column; gap: .6em; }
+#mbtn button { width: 3.2em; height: 3.2em; padding: 0; border-radius: 50%; font-size: 1.2em; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffb3d4, 0 .3em 1em #0009; }
+@media (pointer: coarse) { .g #mbtn { display: flex; } .s #mbtn, .s #pet { display: none !important; } }
+@media (max-width: 40em), (max-height: 30em) {
+  body { font-size: 14px; }
+  h1 { font-size: 3.4em; }
+  #shop { padding: 0; }
+  .sh-box { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(8.6em, 1fr)); gap: .5em; }
+  .item { padding: .6em; } .item .ico, .pack-art { font-size: 1.9em; }
+  #shop nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+  #shop nav button { white-space: nowrap; flex: none; }
+  .card.big { width: 8.5em; height: 12.5em; } .card.big .por { width: 5.5em; height: 6.6em; }
+  #shopBtn { right: 3.6em; }
+  #k { display: none; }
+}
 #i { position: absolute; bottom: 1em; left: 1.2em; margin: 0; font: .8em/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; text-shadow: 0 1px 4px #000; pointer-events: none; }
 </style>
 </head>
@@ -206,13 +249,17 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 <div id=shop>
   <div class=sh-box>
     <header><b id=shT>Negozio</b>
-      <nav><button data-tab=care id=tabCare>Cibo e cura</button><button data-tab=toys id=tabToys>Giochi</button><button data-tab=packs id=tabPacks>Pacchetti di carte</button><button data-tab=album id=tabAlbum>Collezione</button></nav>
+      <nav><button data-tab=care id=tabCare>Cibo e cura</button><button data-tab=toys id=tabToys>Giochi</button><button data-tab=packs id=tabPacks>Pacchetti di carte</button><button data-tab=wear id=tabWear>Vestiti</button><button data-tab=album id=tabAlbum>Collezione</button></nav>
       <span class=pill><span class=coin></span><span id=shN>0</span></span><button id=shX aria-label=Chiudi>✕</button>
     </header>
     <div id=shBody></div>
   </div>
   <div id=pack hidden><div id=cards></div><button id=packOk>Evviva!</button></div>
+  <div id=game hidden><div class=g-box><header><b id=gT></b><button id=gX aria-label=Chiudi>✕</button></header><div id=gBody></div><p id=gR></p><button id=gAgain hidden>Riprova</button></div></div>
 </div>
+<button id=offer hidden>🎲 <span id=offerT></span></button>
+<div id=joy><i></i></div>
+<div id=mbtn><button id=snackBtn aria-label=Snack>🐟</button><button id=laserBtn aria-label=Laser>🔴</button><button id=wearBtn aria-label=Vestiti>👒</button></div>
 <pre id=i></pre>
 <script>
 /*SCRIPT*/

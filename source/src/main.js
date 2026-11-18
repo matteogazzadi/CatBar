@@ -6,12 +6,13 @@ const canvas = $('c'), info = $('i'), body = document.body;
 // English page text when the browser is not Italian (the page itself is written in Italian)
 if (!IT) {
   document.documentElement.lang = 'en';
-  const T = { s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
-    tabToys: 'Toys', tabCare: 'Food & care', tabPacks: 'Card packs', tabAlbum: 'Collection' };
+  const T = { gAgain: 'Try again', s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
+    tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabPacks: 'Card packs', tabAlbum: 'Collection' };
   for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
   const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
   document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
 }
+if (mob) document.getElementById('shopBtn').textContent = IT ? '🛍 Negozio' : '🛍 Shop';
 const SHOT = /[?&]shot/.test(location.search), DBG = +(location.search.match(/dbg=(\d)/) || [0, 0])[1]; // fixed size, no adaptation: for screenshots
 let loaded = 0, dead;
 const say = (m, to, ms) => {
@@ -242,26 +243,33 @@ $('o').onclick = () => { body.className = 'm'; };
 canvas.addEventListener('touchstart', (e) => {
   if (!inGame()) return;
   for (const t of e.changedTouches) {
-    if (t.clientX < innerWidth / 2 && !TOUCH.move) TOUCH.move = { id: t.identifier, x: t.clientX, y: t.clientY };
-    else if (!TOUCH.look) TOUCH.look = { id: t.identifier, x: t.clientX, y: t.clientY };
+    if (t.clientX < innerWidth / 2 && !TOUCH.move) { TOUCH.move = { id: t.identifier, x: t.clientX, y: t.clientY }; const j = $('joy'); j.style.left = t.clientX + 'px'; j.style.top = t.clientY + 'px'; j.classList.add('on'); j.firstChild.style.transform = ''; }
+    else if (!TOUCH.look) {
+      TOUCH.look = { id: t.identifier, x: t.clientX, y: t.clientY };
+      // touching a cat pets it (as long as the finger stays down)
+      const c = pickAt(t.clientX, t.clientY); if (c) { PET.force = c; PET.touch = true; TOUCH.look.pet = true; }
+    }
   }
   e.preventDefault();
 }, { passive: false });
 canvas.addEventListener('touchmove', (e) => {
   for (const t of e.changedTouches) {
-    if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.s = clamp((t.clientX - TOUCH.move.x) / 60, -1, 1); TOUCH.f = clamp(-(t.clientY - TOUCH.move.y) / 60, -1, 1); }
+    if (TOUCH.move && t.identifier === TOUCH.move.id) { const dx = clamp(t.clientX - TOUCH.move.x, -50, 50), dy = clamp(t.clientY - TOUCH.move.y, -50, 50); TOUCH.s = dx / 50; TOUCH.f = -dy / 50; $('joy').firstChild.style.transform = `translate(${dx}px, ${dy}px)`; }
     if (TOUCH.look && t.identifier === TOUCH.look.id) { PL.yaw += (t.clientX - TOUCH.look.x) * 0.005; PL.pitch = clamp(PL.pitch - (t.clientY - TOUCH.look.y) * 0.005, -1.4, 1.4); TOUCH.look.x = t.clientX; TOUCH.look.y = t.clientY; }
   }
   e.preventDefault();
 }, { passive: false });
-const tEnd = (e) => { for (const t of e.changedTouches) { if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.move = null; TOUCH.f = TOUCH.s = 0; } if (TOUCH.look && t.identifier === TOUCH.look.id) TOUCH.look = null; } };
+const tEnd = (e) => { for (const t of e.changedTouches) { if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.move = null; TOUCH.f = TOUCH.s = 0; $('joy').classList.remove('on'); } if (TOUCH.look && t.identifier === TOUCH.look.id) { TOUCH.look = null; PET.touch = false; PET.force = null; } } };
 canvas.addEventListener('touchend', tEnd); canvas.addEventListener('touchcancel', tEnd);
+$('snackBtn').onclick = () => giveSnack(PET.cat || lastTarget);
+$('laserBtn').onclick = () => { if (SAVE.laser) LASER.on = !LASER.on; else openShop('toys'); };
+$('wearBtn').onclick = () => { wearCat = PET.cat || lastTarget || wearCat; openShop('wear'); };
 $('pet').addEventListener('pointerdown', (e) => { PET.mouse = true; e.preventDefault(); });
 $('pet').addEventListener('pointerup', () => { PET.mouse = false; });
 $('pet').addEventListener('pointerleave', () => { PET.mouse = false; });
 
 // ---------------------------------------------------------------- looking at and petting cats
-const PET = { on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
+const PET = { touch: false, force: null, on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
 const PET_TIME = 1.6, COOLDOWN = 10, REACH = 2.5;
 const ring = $('r'), xh = $('x'), tl = $('t');
 let lastTarget = null;
@@ -278,6 +286,14 @@ function pickCat(ox, oy, oz, dx, dy, dz) {
     }
   }
   return best;
+}
+// the cat under a point of the screen (touch)
+const PK0 = new Float32Array(4), PK1 = new Float32Array(4);
+function pickAt(cx, cy) {
+  const nx = (cx / innerWidth) * 2 - 1, ny = 1 - (cy / innerHeight) * 2, m = IVP;
+  for (const [o, z] of [[PK0, 0], [PK1, 1]]) for (let r = 0; r < 4; r++) o[r] = m[r] * nx + m[4 + r] * ny + m[8 + r] * z + m[12 + r];
+  const ax = PK0[0] / PK0[3], ay = PK0[1] / PK0[3], az = PK0[2] / PK0[3], bx = PK1[0] / PK1[3] - ax, by = PK1[1] / PK1[3] - ay, bz = PK1[2] / PK1[3] - az, l = hypot(bx, by, bz);
+  return pickCat(PL.x, PL.eye, PL.z, bx / l, by / l, bz / l);
 }
 function popCoin(n = 1) {
   coins += n; keep('catbarCoins', coins); $('n').textContent = coins;
@@ -301,9 +317,10 @@ function updatePet(dt, fx, fy, fz) {
   if (SNACK.t > 0) SNACK.t -= dt;
   if (KEY.KeyF && !PET.fDown && target) giveSnack(target);
   PET.fDown = !!KEY.KeyF;
-  const holding = PET.mouse || PET.key;
+  const holding = PET.mouse || PET.key || PET.touch;
   if (holding) { // start on the cat under the crosshair, then stay on it while the button is held
-    if (!PET.on && target) { if (target !== PET.cat) { PET.cat = target; PET.t = 0; } PET.on = true; }
+    const start = target || PET.force;
+    if (!PET.on && start) { if (start !== PET.cat) { PET.cat = start; PET.t = 0; } PET.on = true; }
   } else PET.on = false;
   if (PET.on && PET.cat) { // keep it in view: the camera turns gently towards it (crouching moves the eye)
     const c = PET.cat, dx = c.sp[1][0] - PL.x, dz = c.sp[1][2] - PL.z, dy = c.sp[1][1] - PL.eye;
@@ -338,7 +355,7 @@ function updatePet(dt, fx, fy, fz) {
       $('tn').textContent = show.name; $('tb').textContent = show.breed;
       for (const [id, v] of [['bh', 1 - show.hunger], ['bt', 1 - show.thirst], ['bj', show.joy]]) $(id).style.setProperty('--v', v.toFixed(2));
       const need = show.hunger > 0.6 ? L_('ha fame', 'is hungry') : show.thirst > 0.6 ? L_('ha sete', 'is thirsty') : '';
-      $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tieni premuta la zampa: coccola', 'hold the paw button: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack ? L_(' · F: snack', ' · F: treat') : ''));
+      $('ti').textContent = (need && !PET.on ? need + ' · ' : '') + (PET.on ? (show.coinT > 0 ? L_('fa le fusa… ♥', 'purring… ♥') : L_('coccole in corso… ♥', 'petting… ♥')) : show.coinT > 0 ? L_('ha appena avuto coccole', 'just had cuddles') + ` · ${Math.ceil(show.coinT)}s` : (mob ? L_('tieni premuta la zampa: coccola', 'hold the paw button: pet') : L_('tieni premuto il click: coccola', 'hold the click: pet')) + (show.joy > 0.6 ? ' → +2' : ' → +1') + (SAVE && SAVE.snack && !mob ? L_(' · F: snack', ' · F: treat') : '') + (typeof OFFER !== 'undefined' && OFFER && OFFER.cat === show && !mob ? L_(' · G: gioca!', ' · G: play!') : ''));
     }
   }
   for (let k = 0; k < NH; k++) if (PTD[k * 4 + 3] > 0) { PTD[k * 4 + 3] += dt; if (PTD[k * 4 + 3] > 1.6) PTD[k * 4 + 3] = 0; }
@@ -353,7 +370,8 @@ let frame = 0;
 function uniforms(t, fx, fy, fz) {
   const ex = PL.x, ey = PL.eye, ez = PL.z;
   lookAt(V, ex, ey, ez, ex + fx, ey + fy, ez + fz);
-  persp(Pm, (68 * PI) / 180, RW / RH_, 0.02, 150);
+  const asp = RW / RH_; // phones held upright keep a wide enough view
+  persp(Pm, asp < 1 ? min(2 * Math.atan(tan((70 * PI) / 360) / asp), 1.9) : (68 * PI) / 180, asp, 0.02, 150);
   mul4(VP0, Pm, V); // unjittered, for reprojection next frame
   // temporal anti-aliasing: a different sub-pixel offset every frame (Halton 2,3)
   const hk = (frame % 8) + 1, hal = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
@@ -493,7 +511,7 @@ initCats();
 let scale = [1, 0.85, 0.7][LV], last = performance.now(), simT = 0, ftAvg = 16, ftN = 0;
 const DPR = min(devicePixelRatio || 1, 2);
 const fitSize = () => { const s = SHOT ? 1 : DPR * scale; resize(canvas.clientWidth * s, canvas.clientHeight * s); };
-if (SHOT) window.__cb = { audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
+if (SHOT) window.__cb = { VPm, get OFFER() { return OFFER; }, audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
 function tick(dt) {
   simT += dt;
   if (inGame() && !(SHOT && window.__cb.frozen)) movePlayer(dt);

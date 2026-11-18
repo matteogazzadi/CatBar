@@ -4,7 +4,7 @@
 // Coins come from petting (main.js). Everything bought is remembered in localStorage.catbarItems.
 // `var` on purpose: the frame loop is already running when this file's lines execute.
 var SHOPOPEN = false;
-var SAVE = { yarn: 0, mouse: 0, box: 0, nip: 0, laser: false, cats: [], snack: 0, brush: false, food: 0.6, water: 0.7 };
+var SAVE = { yarn: 0, mouse: 0, box: 0, nip: 0, laser: false, cats: [], snack: 0, brush: false, food: 0.6, water: 0.7, acc: [], wear: {} };
 try { Object.assign(SAVE, JSON.parse(localStorage.catbarItems || '{}')); } catch {}
 var saveItems = () => keep('catbarItems', JSON.stringify(SAVE));
 var CARE = [
@@ -27,6 +27,27 @@ var PACKS = [
 var REFUND = [3, 6, 12, 25];
 var ACC_ICON = { santa: '🎅', elf: '🧝', witch: '🧙', crown: '👑', halo: '😇', antlers: '🦌', scarf: '🧣', bow: '🎀', bell: '🔔' };
 var shopTab = 'toys';
+// things to wear: [id, slot, price (0 = only from mini-games), icon, it, en]
+var WEAR = [
+  ['beanie', 'head', 12, '🧢', 'Berretto di lana', 'Wool beanie'], ['tophat', 'head', 18, '🎩', 'Cilindro', 'Top hat'],
+  ['earbow', 'head', 8, '🎀', "Fiocco sull'orecchio", 'Ear bow'], ['flowers', 'head', 15, '🌸', 'Coroncina di fiori', 'Flower crown'],
+  ['santa', 'head', 20, '🎅', 'Cappello di Natale', 'Santa hat'], ['elf', 'head', 16, '🧝', 'Cappello da elfo', 'Elf hat'],
+  ['witch', 'head', 16, '🧙', 'Cappello da strega', 'Witch hat'], ['antlers', 'head', 22, '🦌', 'Corna da renna', 'Reindeer antlers'],
+  ['crown', 'head', 60, '👑', 'Corona', 'Crown'], ['sunglasses', 'face', 0, '🕶', 'Occhiali da sole', 'Sunglasses'],
+  ['halo', 'head', 0, '😇', 'Aureola', 'Halo'],
+  ['bell', 'neck', 6, '🔔', 'Campanellino', 'Little bell'], ['bow', 'neck', 6, '🎀', 'Papillon', 'Bow tie'],
+  ['bandana', 'neck', 8, '🟥', 'Bandana', 'Bandana'], ['heart', 'neck', 14, '💛', 'Medaglietta a cuore', 'Heart tag'],
+  ['pearls', 'neck', 20, '📿', 'Collana di perle', 'Pearl necklace'], ['scarf', 'neck', 12, '🧣', 'Sciarpa', 'Scarf'],
+  ['sweater', 'body', 25, '🧶', 'Maglioncino', 'Sweater'], ['cape', 'body', 30, '🦸', 'Mantello da supereroe', 'Superhero cape'],
+  ['tutu', 'body', 20, '🩰', 'Tutù', 'Tutu'],
+];
+var wearCat = null; // the cat being dressed in the wardrobe
+var slotOf = (id) => (WEAR.find((w) => w[0] === id) || [0, 'head'])[1];
+// what a cat wears: its own accessories (special cats), with the clothes you put on it taking their slots
+function refreshAcc(c) {
+  const worn = SAVE.wear[c.name] || [], base = (c.special ? c.special[17] : []).filter((a) => !worn.some((w) => slotOf(w) === slotOf(a)));
+  c.acc = [...base, ...worn];
+}
 
 // a free spot on the floor in front of the player (or anywhere, when loading a save)
 function spotAhead(dist) {
@@ -59,11 +80,13 @@ BOWL.food = clamp(+SAVE.food || 0, 0, 1); BOWL.water = clamp(+SAVE.water || 0, 0
 setInterval(() => { SAVE.food = +BOWL.food.toFixed(3); SAVE.water = +BOWL.water.toFixed(3); saveItems(); }, 5000);
 for (const id of ['yarn', 'mouse', 'box', 'nip']) for (let k = 0; k < min(SAVE[id] || 0, 12); k++) { const [x, z] = randFree(0.35); placeItem(id, x, z); }
 for (const id of SAVE.cats) spawnSpecial(id, false);
+for (const c of CATS) refreshAcc(c);
 
 // ---------------------------------------------------------------- the panel
 var setCoins = (n) => { coins = n; keep('catbarCoins', coins); $('n').textContent = coins; $('shN').textContent = coins; };
 function openShop(tab) {
   if (!inGame()) return;
+  if (tab !== 'wear') wearCat = lastTarget || wearCat;
   SHOPOPEN = true; if (tab) shopTab = tab;
   try { document.exitPointerLock(); } catch {}
   body.className = 'g s'; PET.mouse = false; renderShop();
@@ -112,6 +135,17 @@ function renderShop() {
       const btn = own ? `<button disabled>${L_('Già tua', 'Owned')}</button>` : `<button data-care=${it.id} ${coins < it.price || full ? 'disabled' : ''}>${full ? L_('Piena', 'Full') : `<span class=coin></span> ${it.price}`}</button>`;
       return `<div class=item><span class=ico>${it.icon}</span><b>${esc_(nm)}</b><p>${esc_(ds)}</p>${btn}</div>`;
     }).join('') + '</div>';
+  } else if (shopTab === 'wear') {
+    if (!wearCat) wearCat = PET.cat || lastTarget || CATS[0];
+    const worn = SAVE.wear[wearCat.name] || [];
+    const opts = CATS.map((c) => `<option value=${c.i} ${c === wearCat ? 'selected' : ''}>${esc_(c.name)} · ${esc_(c.breed)}</option>`).join('');
+    B.innerHTML = `<p class=count><label>${L_('Chi vesti?', 'Who are you dressing?')} <select id=wearSel>${opts}</select></label> <small>${L_('Tocca un accessorio tuo per metterlo o toglierlo. Uno per testa, viso, collo e corpo.', 'Tap one of yours to put it on or take it off. One each for head, face, neck and body.')}</small></p><div class="grid wear">` + WEAR.map(([id, slot, price, icon, it, en]) => {
+      const own = SAVE.acc.includes(id), on = worn.includes(id);
+      const btn = own ? `<button data-wear=${id} class=${on ? 'on' : ''}>${on ? L_('Togli', 'Take off') : L_('Metti', 'Put on')}</button>`
+        : price ? `<button data-buyacc=${id} ${coins < price ? 'disabled' : ''}><span class=coin></span> ${price}</button>` : `<button disabled>${L_('Vinci nei mini giochi', 'Win it in mini-games')}</button>`;
+      return `<div class="item ${on ? 'worn' : ''}"><span class=ico>${icon}</span><b>${esc_(IT ? it : en)}</b><p>${L_({ head: 'Testa', face: 'Viso', neck: 'Collo', body: 'Corpo' }[slot], slot[0].toUpperCase() + slot.slice(1))}</p>${btn}</div>`;
+    }).join('') + '</div>';
+    $('wearSel').onchange = (e) => { wearCat = CATS[+e.target.value]; renderShop(); };
   } else if (shopTab === 'packs') {
     B.innerHTML = '<div class="grid packs">' + PACKS.map((pk) => {
       const [nm, ds] = L(pk);
@@ -143,6 +177,18 @@ function buyCare(id) {
   for (const c of CATS) if (c.pet <= 0 && c.st !== 'sleep' && ((id === 'kibble' && c.hunger > 0.4) || (id === 'water' && c.thirst > 0.4))) decide(c);
   renderShop();
 }
+function buyAcc(id) {
+  const w = WEAR.find((x) => x[0] === id); if (!w || !w[2] || coins < w[2] || SAVE.acc.includes(id)) return;
+  setCoins(coins - w[2]); SAVE.acc.push(id); saveItems(); if (typeof coinSound === 'function') coinSound();
+  toggleWear(id);
+}
+function toggleWear(id) {
+  if (!wearCat || !SAVE.acc.includes(id)) return;
+  let worn = SAVE.wear[wearCat.name] || [];
+  if (worn.includes(id)) worn = worn.filter((x) => x !== id);
+  else { worn = worn.filter((x) => slotOf(x) !== slotOf(id)); worn.push(id); wearCat.joy = min(1, wearCat.joy + 0.1); wearCat.meowT = 0.3; }
+  SAVE.wear[wearCat.name] = worn; saveItems(); refreshAcc(wearCat); renderShop();
+}
 function openPack(id) {
   const pk = PACKS.find((p) => p.id === id); if (!pk || coins < pk.price) return;
   setCoins(coins - pk.price);
@@ -152,7 +198,7 @@ function openPack(id) {
     let pool = [];
     for (let rr_ = r; rr_ >= 0 && !pool.length; rr_--) pool = SPECIALS.filter((d) => d[3] === rr_ && (!pk.tag || d[4] === pk.tag));
     const d = pick(pool), dup = SAVE.cats.includes(d[0]) || cards.some((c) => c.d === d && !c.dup);
-    if (!dup) { SAVE.cats.push(d[0]); spawnSpecial(d[0], true); } else setCoins(coins + REFUND[d[3]]);
+    if (!dup) { SAVE.cats.push(d[0]); refreshAcc(spawnSpecial(d[0], true)); } else setCoins(coins + REFUND[d[3]]);
     cards.push({ d, dup });
   }
   saveItems();
@@ -170,10 +216,13 @@ $('shBody').addEventListener('click', (e) => {
   if (b.dataset.buy) buy(b.dataset.buy);
   if (b.dataset.pack) openPack(b.dataset.pack);
   if (b.dataset.care) buyCare(b.dataset.care);
+  if (b.dataset.buyacc) buyAcc(b.dataset.buyacc);
+  if (b.dataset.wear) toggleWear(b.dataset.wear);
   if (b.hasAttribute('data-laser')) { LASER.on = !LASER.on; renderShop(); }
 });
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyB') { if (SHOPOPEN) closeShop(); else openShop(); }
+  if (e.code === 'KeyV' && !SHOPOPEN && inGame()) { wearCat = lastTarget || PET.cat || wearCat; openShop('wear'); }
   if (e.code === 'Escape' && SHOPOPEN) closeShop();
   if (e.code === 'KeyL' && SAVE.laser && inGame() && !SHOPOPEN) LASER.on = !LASER.on;
 });

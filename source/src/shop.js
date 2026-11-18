@@ -117,6 +117,7 @@ function portrait(d, known = true) {
 function renderShop() {
   $('shN').textContent = coins;
   document.querySelectorAll('#shop nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === shopTab));
+  if (renderShop.tab !== shopTab) { $('shBody').scrollTop = 0; renderShop.tab = shopTab; }
   const L = (o) => (IT ? o.it : o.en), B = $('shBody');
   if (shopTab === 'toys') {
     B.innerHTML = '<div class=grid>' + ITEMS.map((it) => {

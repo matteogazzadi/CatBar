@@ -6,13 +6,13 @@ const canvas = $('c'), info = $('i'), body = document.body;
 // English page text when the browser is not Italian (the page itself is written in Italian)
 if (!IT) {
   document.documentElement.lang = 'en';
-  const T = { tip: 'Tap a cat to go and pet it · tap the floor to walk there · drag to look around · joystick bottom-left', gAgain: 'Try again', s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopBtn: '🛍 Shop (B)', shT: 'Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
-    tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabPacks: 'Card packs', tabAlbum: 'Collection' };
+  const T = { tip: 'Tap a cat to go and pet it · tap the floor to walk there · drag to look around · joystick bottom-left', gAgain: 'Try again', s: 'Opening the café…', d: 'Enter', tagline: 'cat café', shopL: 'Shop (B)', shT: '🛒 Shop', packOk: 'Great!', h: 'Drag on the left to walk · on the right to look · hold the paw button to pet',
+    tabToys: 'Toys', tabCare: 'Food & care', tabWear: 'Clothes', tabPacks: 'Cards', tabAlbum: 'Collection' };
   for (const k in T) { const e = document.getElementById(k); if (e) e.textContent = T[k]; }
   const q = document.querySelectorAll('#q span, #q button'); ['Detail', 'Low', 'Medium', 'High'].forEach((t, i) => q[i] && (q[i].textContent = t));
   document.getElementById('k').innerHTML = '<p><i><b>W</b><b>A</b><b>S</b><b>D</b></i>Walk<i><b>Mouse</b></i>Look around<i><b>Click</b></i>Hold: pet a cat<i><b>Shift</b></i>Faster</p><p><i><b>B</b></i>Shop<i><b>C</b></i>Crouch<i><b>Esc</b></i>Menu<i><b>M</b></i>Sound</p>';
 }
-if (mob) document.getElementById('shopBtn').textContent = IT ? '🛍 Negozio' : '🛍 Shop';
+if (mob) document.getElementById('shopL').textContent = IT ? 'Negozio' : 'Shop';
 const SHOT = /[?&]shot/.test(location.search), DBG = +(location.search.match(/dbg=(\d)/) || [0, 0])[1]; // fixed size, no adaptation: for screenshots
 let loaded = 0, dead;
 const say = (m, to, ms) => {

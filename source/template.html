@@ -121,7 +121,9 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 .sh-box { width: min(62em, 100%); max-height: calc(100% - 1em); display: flex; flex-direction: column; border-radius: 1em; background: #2a1a12f2; box-shadow: 0 1em 3em #000a, inset 0 0 0 2px #ffb3d433; overflow: hidden; }
 .sh-box header { display: flex; flex-wrap: wrap; align-items: center; gap: .6em 1em; padding: .8em 1em; border-bottom: 2px solid #ffb3d422; }
 #shT { font: italic 900 1.6em Georgia, serif; color: #ffd0e6; }
-#shop nav { display: flex; gap: .3em; flex: 1; flex-wrap: wrap; }
+#shop nav { display: flex; gap: .3em; flex-wrap: wrap; padding: .5em 1em; border-bottom: 2px solid #ffb3d422; }
+#shop nav button i { font-style: normal; font-size: 1.2em; }
+#shT { flex: 1; }
 #shop nav button, #shX { padding: .5em .9em; background: none; box-shadow: none; color: #fff4e6; font-size: .8em; }
 #shop nav button.on { background: linear-gradient(#ffd0e6, #ff5ea8); color: #3a1a10; }
 .pill { display: flex; align-items: center; gap: .4em; padding: .25em .8em .25em .3em; border-radius: 2em; background: #1c120c; font-size: 1.15em; }
@@ -203,8 +205,14 @@ body:not(.g) #tip, .s #tip { display: none; }
   .sh-box { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(8.6em, 1fr)); gap: .5em; }
   .item { padding: .6em; } .item .ico, .pack-art { font-size: 1.9em; }
-  #shop nav { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
-  #shop nav button { white-space: nowrap; flex: none; }
+  /* on a phone the sections are a tab bar at the bottom: icon over a short name, all five always visible */
+  #shBody { flex: 1; }
+  #shop nav { order: 3; display: grid; grid-template-columns: repeat(5, 1fr); gap: .2em; padding: .35em .3em calc(.35em + env(safe-area-inset-bottom)); border-top: 2px solid #ffb3d433; border-bottom: 0; background: #1c120c; }
+  #shop nav button { flex-direction: column; gap: .15em; padding: .45em .1em; border-radius: .6em; font-size: .66em; letter-spacing: .04em; white-space: nowrap; }
+  #shop nav button i { font-size: 2em; }
+  .sh-box header { padding: .7em 1em; }
+  #shT { font-size: 1.35em; }
+  #shX { font-size: 1.3em; padding: .3em .7em; }
   .card.big { width: 8.5em; height: 12.5em; } .card.big .por { width: 5.5em; height: 6.6em; }
   #shopBtn { right: 3.6em; }
   #k { display: none; }
@@ -247,13 +255,17 @@ body:not(.g) #tip, .s #tip { display: none; }
 </div>
 <button id=o aria-label=Menù>≡</button>
 <button id=pet aria-label=Coccola>🐾</button>
-<button id=shopBtn>🛍 Negozio (B)</button>
+<button id=shopBtn aria-label=Negozio>🛒 <span id=shopL>Negozio (B)</span></button>
 <div id=shop>
   <div class=sh-box>
-    <header><b id=shT>Negozio</b>
-      <nav><button data-tab=care id=tabCare>Cibo e cura</button><button data-tab=toys id=tabToys>Giochi</button><button data-tab=packs id=tabPacks>Pacchetti di carte</button><button data-tab=wear id=tabWear>Vestiti</button><button data-tab=album id=tabAlbum>Collezione</button></nav>
+    <header><b id=shT>🛒 Negozio</b>
       <span class=pill><span class=coin></span><span id=shN>0</span></span><button id=shX aria-label=Chiudi>✕</button>
     </header>
+    <nav>
+      <button data-tab=care><i>🥣</i><span id=tabCare>Cibo e cura</span></button><button data-tab=toys><i>🧶</i><span id=tabToys>Giochi</span></button>
+      <button data-tab=wear><i>👒</i><span id=tabWear>Vestiti</span></button><button data-tab=packs><i>🃏</i><span id=tabPacks>Carte</span></button>
+      <button data-tab=album><i>📖</i><span id=tabAlbum>Collezione</span></button>
+    </nav>
     <div id=shBody></div>
   </div>
   <div id=pack hidden><div id=cards></div><button id=packOk>Evviva!</button></div>

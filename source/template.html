@@ -112,7 +112,13 @@ button:active { transform: translateY(.1em); filter: brightness(.9); }
 #pet { position: absolute; right: 1.2em; bottom: 1.2em; display: none; width: 4.5em; height: 4.5em; border-radius: 50%; font-size: 1.2em; padding: 0; background: #ffb3d4cc; }
 @media (pointer: coarse) { .g #pet { display: flex; } }
 /* shop */
-#shopBtn { position: absolute; top: .7em; right: 4em; display: none; padding: .45em .9em; font-size: .85em; background: #1c120cd9; color: #fff4e6; box-shadow: inset 0 0 0 2px #ffd04a, 0 .3em 1em #0009; }
+/* the cart sits next to the coins; a red dot says there is something new you can buy */
+#shopBtn { position: relative; display: none; width: 1.9em; height: 1.9em; margin: -.2em -.6em -.2em .35em; padding: 0; border-radius: 50%; font-size: .78em; pointer-events: auto; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffd04a, 0 .3em 1em #0009; }
+.dot { position: absolute; top: -.15em; right: -.15em; display: none; width: .8em; height: .8em; border-radius: 50%; background: #ff2a3a; box-shadow: 0 0 0 2px #1c120c, 0 0 .6em #ff2a3a; animation: dotp 1.6s infinite; }
+.has > .dot { display: block; }
+@keyframes dotp { 50% { transform: scale(1.2); } }
+#shop nav button { position: relative; }
+#shop nav .dot { top: .2em; right: .25em; width: .7em; height: .7em; font-size: 1em; }
 .g #shopBtn { display: flex; }
 .p #shopBtn { opacity: .55; }
 #shop { position: absolute; inset: 0; display: none; place-items: center; padding: 1em; background: #1c120c99; backdrop-filter: blur(6px); }
@@ -214,7 +220,6 @@ body:not(.g) #tip, .s #tip { display: none; }
   #shT { font-size: 1.35em; }
   #shX { font-size: 1.3em; padding: .3em .7em; }
   .card.big { width: 8.5em; height: 12.5em; } .card.big .por { width: 5.5em; height: 6.6em; }
-  #shopBtn { right: 3.6em; }
   #k { display: none; }
 }
 #i { position: absolute; bottom: 1em; left: 1.2em; margin: 0; font: .8em/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; text-shadow: 0 1px 4px #000; pointer-events: none; }
@@ -222,7 +227,7 @@ body:not(.g) #tip, .s #tip { display: none; }
 </head>
 <body class=l>
 <canvas id=c></canvas>
-<div id=coins class=hud><span class=coin></span><span id=n>0</span></div>
+<div id=coins class=hud><span class=coin></span><span id=n>0</span><button id=shopBtn aria-label=Negozio title="Negozio (B)">🛒<b class=dot></b></button></div>
 <div id=x class=hud><svg viewBox="0 0 36 36"><circle id=r cx=18 cy=18 r=15.9 pathLength=100 /></svg></div>
 <div id=t class=hud><b id=tn></b><span id=tb></span><span class=needs><i class=bar id=bh title=fame></i><i class=bar id=bt title=sete></i><i class=bar id=bj title=benessere></i></span><i id=ti></i></div>
 <div id=m>
@@ -255,15 +260,14 @@ body:not(.g) #tip, .s #tip { display: none; }
 </div>
 <button id=o aria-label=Menù>≡</button>
 <button id=pet aria-label=Coccola>🐾</button>
-<button id=shopBtn aria-label=Negozio>🛒 <span id=shopL>Negozio (B)</span></button>
 <div id=shop>
   <div class=sh-box>
     <header><b id=shT>🛒 Negozio</b>
       <span class=pill><span class=coin></span><span id=shN>0</span></span><button id=shX aria-label=Chiudi>✕</button>
     </header>
     <nav>
-      <button data-tab=care><i>🥣</i><span id=tabCare>Cibo e cura</span></button><button data-tab=toys><i>🧶</i><span id=tabToys>Giochi</span></button>
-      <button data-tab=wear><i>👒</i><span id=tabWear>Vestiti</span></button><button data-tab=packs><i>🃏</i><span id=tabPacks>Carte</span></button>
+      <button data-tab=care><b class=dot></b><i>🥣</i><span id=tabCare>Cibo e cura</span></button><button data-tab=toys><b class=dot></b><i>🧶</i><span id=tabToys>Giochi</span></button>
+      <button data-tab=wear><b class=dot></b><i>👒</i><span id=tabWear>Vestiti</span></button><button data-tab=packs><b class=dot></b><i>🃏</i><span id=tabPacks>Carte</span></button>
       <button data-tab=album><i>📖</i><span id=tabAlbum>Collezione</span></button>
     </nav>
     <div id=shBody></div>

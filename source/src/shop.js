@@ -114,9 +114,25 @@ function portrait(d, known = true) {
   const acc = known ? d[17].map((a) => `<i class="acc ${a}">${ACC_ICON[a] || ''}</i>`).join('') : '<i class=q>?</i>';
   return `<div class=por><div class=sil style="background:${bg}"></div>${known ? `<b class=eyes style="--e:${h(eye)}"></b>` : ''}${acc}</div>`;
 }
+// red dots: something you can now afford that you have not seen yet, or a bowl to refill
+function shopDots() {
+  const seen = SAVE.seenT || (SAVE.seenT = {});
+  const fresh = (tab, prices) => prices.some((p) => p > 0 && p <= coins && p > (seen[tab] ?? -1));
+  const D = {
+    care: (BOWL.food < 0.25 && coins >= 5) || (BOWL.water < 0.25 && coins >= 2) || fresh('care', CARE.filter((i) => !(i.once && SAVE[i.id])).map((i) => i.price)),
+    toys: fresh('toys', ITEMS.filter((i) => !(i.once && SAVE[i.id])).map((i) => i.price)),
+    wear: fresh('wear', WEAR.filter((w) => !SAVE.acc.includes(w[0])).map((w) => w[2])),
+    packs: fresh('packs', PACKS.map((p) => p.price)),
+  };
+  document.querySelectorAll('#shop nav button').forEach((b) => b.classList.toggle('has', !!D[b.dataset.tab]));
+  $('shopBtn').classList.toggle('has', Object.values(D).some(Boolean));
+}
+setInterval(shopDots, 700);
 function renderShop() {
+  if (SHOPOPEN && shopTab !== 'album') { (SAVE.seenT || (SAVE.seenT = {}))[shopTab] = coins; saveItems(); }
   $('shN').textContent = coins;
   document.querySelectorAll('#shop nav button').forEach((b) => b.classList.toggle('on', b.dataset.tab === shopTab));
+  shopDots();
   if (renderShop.tab !== shopTab) { $('shBody').scrollTop = 0; renderShop.tab = shopTab; }
   const L = (o) => (IT ? o.it : o.en), B = $('shBody');
   if (shopTab === 'toys') {

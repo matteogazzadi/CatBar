@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang=it>
+<head>
+<meta charset=utf-8>
+<title>Cat Bar</title>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<meta name=theme-color content=#1c120c>
+<style>
+/* The class on <body> is the state of the page:
+   l = loading, m = menu, g = in the café (g p while the mouse is captured), l e = failed to start */
+html { background: #1c120c; }
+body {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%; margin: 0; overflow: hidden;
+  background: radial-gradient(#4a2e1c, #1c120c 70%);
+  font: 700 clamp(13px, .7vw + .9vh, 34px)/1.4 system-ui, sans-serif; color: #fff4e6;
+  -webkit-user-select: none; user-select: none;
+}
+canvas {
+  position: absolute; width: 100%; height: 100%; touch-action: none; cursor: crosshair;
+  transition: filter 1s, transform 1s, opacity 2s;
+}
+body:not(.g) canvas { filter: blur(1vmax) brightness(.55); transform: scale(1.06); }
+.l canvas { opacity: 0; }
+
+#m {
+  position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: min(2.2em, 6vmin);
+  padding: 1em 1em 3em; text-align: center; background: radial-gradient(#1c120c00 30%, #1c120ccc);
+  transition: opacity .5s, visibility .5s;
+}
+.g #m, .m #l, .l #g { opacity: 0; visibility: hidden; }
+h1 {
+  margin: 0; font: italic 900 5em/1 Georgia, 'Times New Roman', serif; letter-spacing: .02em;
+  color: #0000; background: linear-gradient(#fff 20%, #ffc9e0 55%, #ff5ea8);
+  -webkit-background-clip: text; background-clip: text; filter: drop-shadow(0 0 .25em #ff3d9a99) drop-shadow(0 .06em .2em #000c);
+}
+h1 small { display: block; margin-top: .35em; font: 700 .2em/1 system-ui, sans-serif; letter-spacing: .3em; text-transform: uppercase; color: #ffd9b0; -webkit-text-fill-color: #ffd9b0; }
+p { margin: 0; }
+#a { display: grid; width: 28em; max-width: 100%; }
+#a > * { grid-area: 1/1; transition: opacity .8s, visibility .8s; }
+#s, #q, #k, #h { font-size: .8em; letter-spacing: .12em; text-transform: uppercase; }
+
+#p { height: .5em; margin: .4em 0 1em; overflow: hidden; border-radius: 1em; background: #1c120c; box-shadow: 0 0 0 2px #ffb3d480, 0 0 1.5em #ff3d9a; }
+#b { display: block; height: 100%; background: linear-gradient(90deg, #ff3d9a, #ffd0e6); transform: scaleX(0); transform-origin: 0; will-change: transform; }
+.e #p { visibility: hidden; }
+.e #s { font-size: 1.1em; letter-spacing: 0; text-transform: none; }
+
+button {
+  display: flex; align-items: center; justify-content: center; gap: .6em; padding: .8em 1.4em; border: 0;
+  border-radius: .5em; background: #fff; box-shadow: inset 0 -.2em #0003, 0 .3em 1em #0009;
+  font: 800 1em/1.2 system-ui, sans-serif; letter-spacing: .12em; text-transform: uppercase;
+  color: #3a1a10; cursor: pointer; transition: transform .12s, filter .12s;
+}
+button:hover { transform: translateY(-.12em); filter: brightness(1.1); }
+button:active { transform: translateY(.1em); filter: brightness(.9); }
+:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+#g { display: grid; gap: min(1.2em, 3.5vmin); }
+#d { padding: .9em; background: linear-gradient(#ffd0e6, #ff5ea8); font-size: 1.3em; box-shadow: inset 0 -.2em #0003, 0 0 2em #ff3d9ab3; }
+#q, #k, #h { padding: 1em 1.6em; border-radius: .7em; background: #1c120cb3; }
+#q { display: flex; align-items: center; gap: .4em; padding: .4em; }
+#q span { flex: 1; color: #ffb3d4; }
+#q button { flex: 1.2; padding: .7em 0; background: none; box-shadow: none; color: #fff4e6; }
+#q button:hover { background: #ffb3d433; }
+#q .on { background: linear-gradient(#ffd0e6, #ff5ea8); box-shadow: inset 0 -.2em #0003; color: #3a1a10; pointer-events: none; }
+#k { display: flex; justify-content: center; gap: 2em; text-align: left; }
+#k p { display: grid; grid-template-columns: auto auto; align-content: start; align-items: center; gap: .55em .9em; }
+#k p + p { padding-left: 2em; border-left: 2px solid #ffb3d440; }
+#k i { display: flex; justify-self: end; align-items: center; gap: .25em; font-style: normal; }
+#k b { min-width: 1.1em; padding: .2em .5em; border-radius: .35em; background: #fff4e6; box-shadow: inset 0 -.15em #0004; color: #3a1a10; text-align: center; }
+#h { display: none; }
+@media (pointer: coarse), (max-height: 30em) { #k { display: none; } }
+@media (pointer: coarse) { #h { display: block; } }
+
+/* in the café: coins, crosshair, the name of the cat you look at, the petting ring */
+.hud { position: absolute; display: none; pointer-events: none; }
+.g .hud { display: block; }
+#coins {
+  top: .8em; left: .8em; display: none; align-items: center; gap: .5em; padding: .35em .9em .35em .4em; border-radius: 2em;
+  background: #1c120cb3; font-size: 1.4em; box-shadow: 0 .2em 1em #0006;
+}
+.g #coins { display: flex; }
+.coin {
+  display: inline-block; width: 1.3em; height: 1.3em; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff6c0, #ffd04a 40%, #c8860a 75%, #8a5a06);
+  box-shadow: inset 0 0 0 .12em #ffe58a, 0 .1em .3em #0008; position: relative;
+}
+.coin::after { content: '🐾'; position: absolute; inset: 0; display: grid; place-items: center; font-size: .6em; filter: sepia(1) saturate(3) hue-rotate(-15deg) brightness(.7); }
+#coins.bump { animation: bump .5s; }
+@keyframes bump { 30% { transform: scale(1.25); } }
+#x { left: 50%; top: 50%; width: 3.2em; height: 3.2em; margin: -1.6em 0 0 -1.6em; }
+#x::before { content: ''; position: absolute; left: 50%; top: 50%; width: .3em; height: .3em; margin: -.15em; border-radius: 50%; background: #fffc; box-shadow: 0 0 .3em #000a; transition: transform .2s; }
+#x.on::before { transform: scale(1.6); background: #ffb3d4; }
+#x svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+#x circle { fill: none; stroke: #ff5ea8; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 0 100; filter: drop-shadow(0 0 3px #ff3d9a); }
+#t { left: 50%; top: calc(50% + 2.4em); transform: translateX(-50%); text-align: center; text-shadow: 0 1px 4px #000, 0 0 1em #000a; white-space: nowrap; opacity: 0; transition: opacity .25s; }
+#t.on { opacity: 1; }
+#t b { display: block; font-size: 1.25em; }
+#t span { font-size: .75em; letter-spacing: .1em; text-transform: uppercase; color: #ffd9b0; }
+#t i { display: block; margin-top: .3em; font-size: .8em; font-style: normal; color: #ffb3d4; }
+.plus { position: absolute; left: 50%; top: 42%; font-size: 1.6em; font-weight: 900; color: #ffe27a; text-shadow: 0 0 .5em #c8860a, 0 2px 4px #000; pointer-events: none; animation: plus 1.4s ease-out forwards; }
+@keyframes plus { from { transform: translate(-50%, 0) scale(.6); opacity: 0; } 20% { transform: translate(-50%, -.4em) scale(1.15); opacity: 1; } to { transform: translate(-50%, -3em) scale(1); opacity: 0; } }
+#o { position: absolute; top: .6em; right: .6em; display: none; padding: .3em .6em; background: #1c120cd9; box-shadow: inset 0 0 0 2px #ffb3d4, 0 .3em 1em #0009; font-size: 1.3em; color: #fff4e6; opacity: .85; }
+.g #o { display: flex; }
+.p #o { display: none; }
+#pet { position: absolute; right: 1.2em; bottom: 1.2em; display: none; width: 4.5em; height: 4.5em; border-radius: 50%; font-size: 1.2em; padding: 0; background: #ffb3d4cc; }
+@media (pointer: coarse) { .g #pet { display: flex; } }
+#i { position: absolute; bottom: 1em; left: 1.2em; margin: 0; font: .8em/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; text-shadow: 0 1px 4px #000; pointer-events: none; }
+</style>
+</head>
+<body class=l>
+<canvas id=c></canvas>
+<div id=coins class=hud><span class=coin></span><span id=n>0</span></div>
+<div id=x class=hud><svg viewBox="0 0 36 36"><circle id=r cx=18 cy=18 r=15.9 pathLength=100 /></svg></div>
+<div id=t class=hud><b id=tn></b><span id=tb></span><i id=ti></i></div>
+<div id=m>
+  <h1>Cat Bar<small>caffè dei gatti</small></h1>
+  <div id=a>
+    <div id=l><div id=p><i id=b></i></div><p id=s>Apriamo il locale…</p></div>
+    <div id=g>
+      <button id=d>Entra</button>
+      <p id=q><span>Dettaglio</span><button>Basso</button><button>Medio</button><button>Alto</button></p>
+      <div id=k>
+        <p>
+          <i><b>W</b><b>A</b><b>S</b><b>D</b></i>Cammina
+          <i><b>Mouse</b></i>Guardati intorno
+          <i><b>Click</b></i>Tieni premuto: coccola
+          <i><b>Shift</b></i>Più veloce
+        </p>
+        <p>
+          <i><b>C</b></i>Accovacciati
+          <i><b>Esc</b></i>Menù
+          <i><b>M</b></i>Audio
+          <i><b>H</b></i>Statistiche
+        </p>
+      </div>
+      <p id=h>Trascina a sinistra per camminare · a destra per guardare · tieni premuta la zampa per coccolare</p>
+    </div>
+  </div>
+</div>
+<button id=o aria-label=Menù>≡</button>
+<button id=pet aria-label=Coccola>🐾</button>
+<pre id=i></pre>
+<script>
+/*SCRIPT*/
+</script>
+</body>
+</html>

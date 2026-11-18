@@ -1,0 +1,468 @@
+// ============================================================================
+// renderer, camera, input, petting and the frame loop
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+const canvas = $('c'), info = $('i'), body = document.body;
+const SHOT = /[?&]shot/.test(location.search), DBG = +(location.search.match(/dbg=(\d)/) || [0, 0])[1]; // fixed size, no adaptation: for screenshots
+let loaded = 0, dead;
+const say = (m, to, ms) => {
+  if (!dead) $('s').textContent = m;
+  if (SHOT) console.log('say ' + m + ' ' + performance.now().toFixed(0));
+  const a = $('b').animate({ transform: [`scaleX(${loaded})`, `scaleX(${to})`] }, { duration: ms, fill: 'forwards', easing: 'cubic-bezier(.3,.5,.5,1)' });
+  loaded = to;
+  return new Promise((r) => { a.ready.then(() => setTimeout(r)); setTimeout(r, document.hidden ? 0 : 1e3); });
+};
+const fail = (m) => { throw new Error(m, { cause: 1 }); };
+if (!navigator.gpu) fail('Il Cat Bar ha bisogno di WebGPU. Prova con una versione recente di Chrome o Edge.');
+const adapter = await navigator.gpu.requestAdapter({ powerPreference: 'high-performance' });
+if (!adapter) fail('Nessun adattatore WebGPU trovato.');
+const device = await adapter.requestDevice();
+device.addEventListener('uncapturederror', (e) => console.error('GPU: ' + e.error.message));
+device.lost.then((l) => {
+  console.error('device lost: ' + l.reason + ' ' + l.message);
+  if (l.reason === 'destroyed' || SHOT) return;
+  if (LV < 2) { keep('catbar', LV + 1); location.reload(); }
+  dead = body.className = 'l e'; $('s').textContent = 'La scheda grafica si è fermata. Ricarica la pagina per riprovare.';
+});
+// ?shot renders off-screen and copies frames into a 2D canvas on request (headless browsers cannot present WebGPU)
+const ctx = SHOT ? null : canvas.getContext('webgpu'), FMT = SHOT ? 'rgba8unorm' : navigator.gpu.getPreferredCanvasFormat();
+if (ctx) ctx.configure({ device, format: FMT, alphaMode: 'opaque' });
+const Q = device.queue, HDR = 'rgba16float', DEPTH = 'depth32float';
+const TU = GPUTextureUsage, BU = GPUBufferUsage, SS = GPUShaderStage;
+const buf = (data, usage) => { const b = device.createBuffer({ size: (data.byteLength + 3) & ~3, usage: usage | BU.COPY_DST }); Q.writeBuffer(b, 0, data.buffer || data, data.byteOffset || 0, data.byteLength); return b; };
+const tex = (w, h, format, usage, o = {}) => device.createTexture({ size: [w, h, o.layers || 1], format, usage, mipLevelCount: o.mips || 1, sampleCount: o.samples || 1 });
+keep('catbarLoad', 1);
+
+// ---------------------------------------------------------------- build the café
+await say('Sistemiamo i tavolini…', 0.2, 600);
+const gW = W.pack(), gS = SKYM.pack(), gP = PROPS.pack();
+await say('Spazzoliamo i gatti…', 0.55, 1400);
+const gC = buildCatMesh();
+const WH = buildWhiskers();
+const EM = new Mesh(); sphere(EM, M4(), 1, [1, 1, 1], 0, 20); const gE = EM.pack();
+await say('Accendiamo le luci…', 0.8, 600);
+
+const mkVB = (g) => ({ vb: buf(new Uint8Array(g.vb), BU.VERTEX), ib: buf(g.ib, BU.INDEX), n: g.count });
+const VW = mkVB(gW), VS = mkVB(gS), VP = mkVB(gP), VC = mkVB(gC), VE = mkVB(gE), VWH = buf(WH, BU.VERTEX);
+const NWH = WH.length / 4;
+
+// ---------------------------------------------------------------- textures and buffers
+const sRep = device.createSampler({ addressModeU: 'repeat', addressModeV: 'repeat', magFilter: 'linear', minFilter: 'linear', mipmapFilter: 'linear', maxAnisotropy: 8 });
+const sClamp = device.createSampler({ magFilter: 'linear', minFilter: 'linear' });
+const sCmp = device.createSampler({ compare: 'less-equal', magFilter: 'linear', minFilter: 'linear' });
+const tShadowS = tex(SHADOW, SHADOW, DEPTH, TU.RENDER_ATTACHMENT | TU.COPY_SRC);
+const tShadow = tex(SHADOW, SHADOW, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING | TU.COPY_DST);
+const tDummyD = tex(1, 1, DEPTH, TU.RENDER_ATTACHMENT | TU.TEXTURE_BINDING);
+const tDummy = tex(1, 1, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST);
+Q.writeTexture({ texture: tDummy }, new Uint8Array([255, 255, 255, 255]), { bytesPerRow: 4 }, [1, 1]);
+// canvas art, with mip levels drawn by the browser's own scaler
+const NL = ARTS.length, ARTW = 1024, ARTH = 512, ARTM = 10;
+const tArt = tex(ARTW, ARTH, 'rgba8unorm', TU.TEXTURE_BINDING | TU.COPY_DST | TU.RENDER_ATTACHMENT, { layers: NL, mips: ARTM });
+ARTS.forEach((cv, l) => {
+  for (let m = 0; m < ARTM; m++) {
+    const w = max(1, ARTW >> m), h = max(1, ARTH >> m), c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(cv, 0, 0, w, h);
+    Q.copyExternalImageToTexture({ source: c }, { texture: tArt, mipLevel: m, origin: [0, 0, l] }, [w, h]);
+  }
+});
+
+const NU = 140, UB = new Float32Array(NU), UBS = new Float32Array(NU);
+const ubo = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST }), uboS = device.createBuffer({ size: NU * 4, usage: BU.UNIFORM | BU.COPY_DST });
+const NMD = 1 + TOYS.length, MDD = new Float32Array(NMD * 16); ident(MDD.subarray(0, 16));
+const mdBuf = device.createBuffer({ size: MDD.byteLength, usage: BU.STORAGE | BU.COPY_DST });
+const bnBuf = device.createBuffer({ size: BND.byteLength, usage: BU.STORAGE | BU.COPY_DST });
+const cpBuf = device.createBuffer({ size: CPD.byteLength, usage: BU.STORAGE | BU.COPY_DST });
+const NH = 48, PTD = new Float32Array(NH * 4);
+const ptBuf = device.createBuffer({ size: PTD.byteLength, usage: BU.STORAGE | BU.COPY_DST });
+Q.writeBuffer(mdBuf, 0, MDD);
+
+const VF = SS.VERTEX | SS.FRAGMENT;
+const bgl0 = device.createBindGroupLayout({ entries: [
+  { binding: 0, visibility: VF, buffer: {} },
+  { binding: 1, visibility: VF, sampler: {} }, { binding: 2, visibility: VF, sampler: {} }, { binding: 3, visibility: VF, sampler: { type: 'comparison' } },
+  { binding: 4, visibility: VF, texture: { sampleType: 'depth' } }, { binding: 5, visibility: VF, texture: {} },
+  { binding: 6, visibility: VF, texture: { viewDimension: '2d-array' } },
+  ...[7, 8, 9, 10].map((binding) => ({ binding, visibility: VF, buffer: { type: 'read-only-storage' } }))] });
+const mkBG0 = (u, sh, ao) => device.createBindGroup({ layout: bgl0, entries: [
+  { binding: 0, resource: { buffer: u } }, { binding: 1, resource: sRep }, { binding: 2, resource: sClamp }, { binding: 3, resource: sCmp },
+  { binding: 4, resource: sh.createView() }, { binding: 5, resource: ao.createView() }, { binding: 6, resource: tArt.createView({ dimension: '2d-array' }) },
+  { binding: 7, resource: { buffer: mdBuf } }, { binding: 8, resource: { buffer: bnBuf } }, { binding: 9, resource: { buffer: cpBuf } }, { binding: 10, resource: { buffer: ptBuf } }] });
+const bgShadow = mkBG0(uboS, tDummyD, tDummy), bgPre = mkBG0(ubo, tDummyD, tDummy);
+const bglPost = device.createBindGroupLayout({ entries: [
+  { binding: 0, visibility: SS.FRAGMENT, texture: { sampleType: 'depth' } },
+  { binding: 1, visibility: SS.FRAGMENT, texture: {} }, { binding: 2, visibility: SS.FRAGMENT, texture: {} }] });
+const pl0 = device.createPipelineLayout({ bindGroupLayouts: [bgl0] });
+const plPost = device.createPipelineLayout({ bindGroupLayouts: [bgl0, bglPost] });
+
+// ---------------------------------------------------------------- pipelines
+const mod = (code) => device.createShaderModule({ code });
+const A = (shaderLocation, offset, format) => ({ shaderLocation, offset, format });
+const vbW = { arrayStride: 24, attributes: [A(0, 0, 'float32x3'), A(1, 12, 'snorm8x4'), A(2, 16, 'unorm8x4'), A(3, 20, 'unorm16x2')] };
+const vbC = { arrayStride: 24, attributes: [A(0, 0, 'float32x3'), A(1, 12, 'snorm8x4'), A(2, 16, 'uint8x4'), A(3, 20, 'unorm8x4')] };
+const mW = mod(W_WORLD), mC = mod(W_CAT(AA > 1)), mE = mod(W_EYE), mWh = mod(W_WHISK), mPt = mod(W_PART), mPost = mod(W_POST);
+const DS = (write = true, bias) => ({ format: DEPTH, depthWriteEnabled: write, depthCompare: 'less', ...(bias ? { depthBias: 2, depthBiasSlopeScale: 2.5 } : {}) });
+const PREM = { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
+const ADD = { color: { srcFactor: 'one', dstFactor: 'one' }, alpha: { srcFactor: 'one', dstFactor: 'one' } };
+const depthPipe = (m, vb, bias) => device.createRenderPipeline({ layout: pl0, vertex: { module: m, entryPoint: 'vsD', buffers: [vb] },
+  primitive: { cullMode: bias ? 'none' : 'back' }, depthStencil: DS(true, bias) });
+const pWShadow = depthPipe(mW, vbW, 1), pWPre = depthPipe(mW, vbW, 0), pCShadow = depthPipe(mC, vbC, 1), pCPre = depthPipe(mC, vbC, 0);
+const mainPipe = (m, vb, o = {}) => device.createRenderPipeline({ layout: pl0,
+  vertex: { module: m, entryPoint: 'vs', buffers: vb ? [vb] : [] },
+  fragment: { module: m, entryPoint: 'fs', targets: [{ format: HDR, blend: o.blend }] },
+  primitive: { cullMode: o.cull || 'back', topology: o.topo || 'triangle-list' },
+  depthStencil: DS(!o.blend), multisample: { count: AA, alphaToCoverageEnabled: !!o.a2c } });
+const pW = mainPipe(mW, vbW), pC = mainPipe(mC, vbC, { a2c: AA > 1 }), pE = mainPipe(mE, vbW);
+const pWh = mainPipe(mWh, { arrayStride: 16, attributes: [A(0, 0, 'float32x4')] }, { blend: PREM, topo: 'line-list', cull: 'none' });
+const pPt = mainPipe(mPt, null, { blend: PREM, cull: 'none' });
+const postPipe = (entry, format, blend) => device.createRenderPipeline({ layout: plPost, vertex: { module: mPost, entryPoint: 'vs' },
+  fragment: { module: mPost, entryPoint: entry, targets: [{ format, blend }] } });
+const pAO = postPipe('fsAO', 'r8unorm'), pBlur = postPipe('fsBlur', 'r8unorm'), pDown = postPipe('fsDown', HDR), pUp = postPipe('fsUp', HDR, ADD), pComp = postPipe('fsComp', FMT);
+
+// ---------------------------------------------------------------- screen-sized targets
+let RW = 0, RH_ = 0, TX = {}, bgMain, PG = {};
+const NBL = 5;
+const postBG = (a, b) => device.createBindGroup({ layout: bglPost, entries: [{ binding: 0, resource: TX.depth.createView() }, { binding: 1, resource: (a || tDummy).createView() }, { binding: 2, resource: (b || tDummy).createView() }] });
+function resize(w, h) {
+  w = max(16, w | 0); h = max(16, h | 0);
+  if (w === RW && h === RH_) return;
+  RW = w; RH_ = h; canvas.width = w; canvas.height = h;
+  for (const k in TX) (Array.isArray(TX[k]) ? TX[k] : [TX[k]]).forEach((t) => t.destroy());
+  const RA = TU.RENDER_ATTACHMENT, TB = TU.TEXTURE_BINDING;
+  TX = {
+    hdr: tex(w, h, HDR, RA | TB), depth: tex(w, h, DEPTH, RA | TB),
+    ao0: tex(w >> 1, h >> 1, 'r8unorm', RA | TB), ao: tex(w >> 1, h >> 1, 'r8unorm', RA | TB),
+    bl: Array.from({ length: NBL }, (_, i) => tex(max(1, w >> (i + 1)), max(1, h >> (i + 1)), HDR, RA | TB)),
+  };
+  if (SHOT) TX.shot = tex(w, h, 'rgba8unorm', RA | TU.COPY_SRC);
+  if (AA > 1) { TX.ms = tex(w, h, HDR, RA, { samples: AA }); TX.msd = tex(w, h, DEPTH, RA, { samples: AA }); }
+  else TX.msd = tex(w, h, DEPTH, RA);
+  bgMain = mkBG0(ubo, tShadow, SSAO ? TX.ao : tDummy);
+  PG = {
+    ao: postBG(), blur: postBG(TX.ao0), comp: postBG(TX.hdr, TX.bl[0]),
+    down: TX.bl.map((t, i) => postBG(i ? TX.bl[i - 1] : TX.hdr)), up: TX.bl.map((t, i) => postBG(TX.bl[i])),
+  };
+}
+
+// ---------------------------------------------------------------- sun
+const SV = M4(), SP = M4(), SVP = M4();
+{
+  const cx = 0, cy = 1.5, cz = 0;
+  lookAt(SV, cx + SUN[0] * 30, cy + SUN[1] * 30, cz + SUN[2] * 30, cx, cy, cz);
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (const X of [-RX - 0.3, RX + 0.3]) for (const Y of [-0.1, RH + 0.2]) for (const Z of [-RZ - 0.3, RZ + 0.3]) {
+    const x = SV[0] * X + SV[4] * Y + SV[8] * Z + SV[12], y = SV[1] * X + SV[5] * Y + SV[9] * Z + SV[13], z = SV[2] * X + SV[6] * Y + SV[10] * Z + SV[14];
+    x0 = min(x0, x); x1 = max(x1, x); y0 = min(y0, y); y1 = max(y1, y); z0 = min(z0, z); z1 = max(z1, z);
+  }
+  ortho(SP, x0, x1, y0, y1, -z1 - 1, -z0 + 1); mul4(SVP, SP, SV);
+}
+const SUNC = [1.0 * 7.5, 0.76 * 7.5, 0.5 * 7.5];
+
+// ---------------------------------------------------------------- the player
+const PL = { x: 3.2, z: 2.2, yaw: -2.2, pitch: -0.12, eye: 1.6, crouch: 0, vx: 0, vz: 0, bob: 0 };
+const KEY = {};
+let coins = 0; try { coins = +localStorage.catbarCoins || 0; } catch {}
+$('n').textContent = coins;
+function movePlayer(dt) {
+  let f = (KEY.KeyW || KEY.ArrowUp ? 1 : 0) - (KEY.KeyS || KEY.ArrowDown ? 1 : 0) + TOUCH.f, s = (KEY.KeyD || KEY.ArrowRight ? 1 : 0) - (KEY.KeyA || KEY.ArrowLeft ? 1 : 0) + TOUCH.s;
+  const l = hypot(f, s); if (l > 1) { f /= l; s /= l; }
+  const sp = (KEY.ShiftLeft || KEY.ShiftRight ? 2.6 : 1.5) * (PL.crouch > 0.5 ? 0.55 : 1);
+  const fx = sin(PL.yaw), fz = -cos(PL.yaw), rx_ = cos(PL.yaw), rz_ = sin(PL.yaw);
+  PL.vx = damp(PL.vx, (fx * f + rx_ * s) * sp, 10, dt); PL.vz = damp(PL.vz, (fz * f + rz_ * s) * sp, 10, dt);
+  let x = PL.x + PL.vx * dt, z = PL.z + PL.vz * dt;
+  const r = 0.28;
+  for (let it = 0; it < 3; it++) {
+    for (const c of COL) {
+      if (c.r !== undefined) { const dx = x - c.x, dz = z - c.z, d = hypot(dx, dz), m = c.r + r * 0.6; if (d < m && d > 1e-5) { x = c.x + (dx / d) * m; z = c.z + (dz / d) * m; } }
+      else { const px = clamp(x, c.x0, c.x1), pz = clamp(z, c.z0, c.z1), dx = x - px, dz = z - pz, d = hypot(dx, dz); if (d < r) { if (d > 1e-5) { x = px + (dx / d) * r; z = pz + (dz / d) * r; } else { x = c.x0 - r; } } }
+    }
+    for (const c of CATS) { if (c.perch) continue; const dx = x - c.x, dz = z - c.z, d = hypot(dx, dz), m = 0.32; if (d < m && d > 1e-5) { x = c.x + (dx / d) * m; z = c.z + (dz / d) * m; } }
+    x = clamp(x, -RX + r, RX - r); z = clamp(z, -RZ + r, RZ - r);
+  }
+  const moved = hypot(x - PL.x, z - PL.z);
+  PL.x = x; PL.z = z; PL.bob += moved * 7;
+  const want = PET.on && PET.cat && PET.cat.y < 0.3 ? 1 : KEY.KeyC ? 1 : 0;
+  PL.crouch = damp(PL.crouch, want, 5, dt);
+  PL.eye = mix(1.6, 0.95, PL.crouch) + sin(PL.bob) * 0.012;
+}
+
+// ---------------------------------------------------------------- input
+let locked = false;
+const TOUCH = { f: 0, s: 0, look: null, move: null };
+const inGame = () => body.classList.contains('g');
+addEventListener('keydown', (e) => {
+  KEY[e.code] = true;
+  if (e.code === 'KeyH') info.hidden = !info.hidden;
+  if (e.code === 'KeyM' && typeof toggleMute === 'function') toggleMute();
+  if (e.code === 'KeyE' && inGame()) PET.key = true;
+});
+addEventListener('keyup', (e) => { KEY[e.code] = false; if (e.code === 'KeyE') PET.key = false; });
+addEventListener('blur', () => { for (const k in KEY) KEY[k] = false; PET.mouse = PET.key = false; });
+canvas.addEventListener('mousedown', (e) => {
+  if (!inGame()) return;
+  if (!locked && !mob) { canvas.requestPointerLock?.(); }
+  if (e.button === 0) PET.mouse = true;
+});
+addEventListener('mouseup', (e) => { if (e.button === 0) PET.mouse = false; });
+addEventListener('mousemove', (e) => {
+  if (!locked) return;
+  PL.yaw += e.movementX * 0.0022; PL.pitch = clamp(PL.pitch - e.movementY * 0.0022, -1.45, 1.45);
+});
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === canvas;
+  if (locked) body.className = 'g p';
+  else if (inGame()) { body.className = 'm'; PET.mouse = false; }
+});
+function enter() {
+  body.className = 'g'; $('d').textContent = 'Torna dai gatti';
+  if (!mob) canvas.requestPointerLock?.();
+  if (typeof startAudio === 'function') startAudio();
+}
+$('d').onclick = enter;
+$('o').onclick = () => { body.className = 'm'; };
+// quality buttons
+[...$('q').querySelectorAll('button')].forEach((b, i) => {
+  const lv = 2 - i; if (lv === LV) b.className = 'on';
+  b.onclick = () => { keep('catbar', lv); location.reload(); };
+});
+// touch: left half walks, right half looks, the paw button pets
+canvas.addEventListener('touchstart', (e) => {
+  if (!inGame()) return;
+  for (const t of e.changedTouches) {
+    if (t.clientX < innerWidth / 2 && !TOUCH.move) TOUCH.move = { id: t.identifier, x: t.clientX, y: t.clientY };
+    else if (!TOUCH.look) TOUCH.look = { id: t.identifier, x: t.clientX, y: t.clientY };
+  }
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', (e) => {
+  for (const t of e.changedTouches) {
+    if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.s = clamp((t.clientX - TOUCH.move.x) / 60, -1, 1); TOUCH.f = clamp(-(t.clientY - TOUCH.move.y) / 60, -1, 1); }
+    if (TOUCH.look && t.identifier === TOUCH.look.id) { PL.yaw += (t.clientX - TOUCH.look.x) * 0.005; PL.pitch = clamp(PL.pitch - (t.clientY - TOUCH.look.y) * 0.005, -1.4, 1.4); TOUCH.look.x = t.clientX; TOUCH.look.y = t.clientY; }
+  }
+  e.preventDefault();
+}, { passive: false });
+const tEnd = (e) => { for (const t of e.changedTouches) { if (TOUCH.move && t.identifier === TOUCH.move.id) { TOUCH.move = null; TOUCH.f = TOUCH.s = 0; } if (TOUCH.look && t.identifier === TOUCH.look.id) TOUCH.look = null; } };
+canvas.addEventListener('touchend', tEnd); canvas.addEventListener('touchcancel', tEnd);
+$('pet').addEventListener('pointerdown', (e) => { PET.mouse = true; e.preventDefault(); });
+$('pet').addEventListener('pointerup', () => { PET.mouse = false; });
+$('pet').addEventListener('pointerleave', () => { PET.mouse = false; });
+
+// ---------------------------------------------------------------- looking at and petting cats
+const PET = { on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0 };
+const PET_TIME = 1.6, COOLDOWN = 15, REACH = 2.5;
+const ring = $('r'), xh = $('x'), tl = $('t');
+let lastTarget = null;
+function pickCat(ox, oy, oz, dx, dy, dz) {
+  let best = null, bt = REACH;
+  for (const c of CATS) {
+    const rs = [0.11, 0.1, 0.085];
+    for (let k = 0; k < 3; k++) {
+      const s = c.sp[k], r = rs[k] * c.scale + 0.03, lx = s[0] - ox, ly = s[1] - oy, lz = s[2] - oz;
+      const b = lx * dx + ly * dy + lz * dz, d2 = lx * lx + ly * ly + lz * lz - b * b;
+      if (d2 > r * r) continue;
+      const t = b - sqrt(r * r - d2);
+      if (t > 0 && t < bt) { bt = t; best = c; }
+    }
+  }
+  return best;
+}
+function popCoin() {
+  coins++; keep('catbarCoins', coins); $('n').textContent = coins;
+  const c = $('coins'); c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
+  const p = document.createElement('div'); p.className = 'plus'; p.innerHTML = '+1 <span class=coin></span>'; body.appendChild(p); setTimeout(() => p.remove(), 1500);
+  if (typeof coinSound === 'function') coinSound();
+}
+function updatePet(dt, fx, fy, fz) {
+  const target = inGame() ? pickCat(PL.x, PL.eye, PL.z, fx, fy, fz) : null;
+  const holding = PET.mouse || PET.key;
+  if (holding) { // pet the cat under the crosshair; a short grace period when it slips out of it
+    if (target) { if (target !== PET.cat || !PET.on) { PET.cat = target; PET.t = 0; } PET.on = true; PET.lost = 0; }
+    else if (PET.on && (PET.lost += dt) > 0.4) PET.on = false;
+  } else PET.on = false;
+  for (const c of CATS) c.pet = max(0, c.pet - dt);
+  let purr = 0;
+  if (PET.on && PET.cat) {
+    const c = PET.cat;
+    if (hypot(c.sp[1][0] - PL.x, c.sp[1][2] - PL.z) > REACH + 0.6) PET.on = false;
+    c.pet = 0.4; purr = 1;
+    PET.t += dt;
+    PET.heart -= dt;
+    if (PET.heart < 0) { PET.heart = 0.32; const k = PET.hk++ % NH; PTD.set([c.sp[2][0] + rr(-0.05, 0.05), c.sp[2][1] + 0.07, c.sp[2][2] + rr(-0.05, 0.05), 0.001], k * 4); }
+    if (PET.t >= PET_TIME) {
+      PET.t = 0;
+      if (c.coinT <= 0) { popCoin(); c.coinT = COOLDOWN; c.petTotal++; if (rnd() < 0.5) meow(c, 0.6); }
+    }
+  }
+  for (const c of CATS) c.coinT -= dt;
+  if (typeof setPurr === 'function') setPurr(purr, PET.cat);
+  // HUD
+  const show = PET.on ? PET.cat : target;
+  xh.classList.toggle('on', !!show);
+  ring.style.strokeDasharray = `${PET.on ? (PET.t / PET_TIME) * 100 : 0} 100`;
+  if (show !== lastTarget || PET.on || (show && show.coinT > -1)) {
+    lastTarget = show;
+    tl.classList.toggle('on', !!show);
+    if (show) {
+      $('tn').textContent = show.name; $('tb').textContent = show.breed;
+      $('ti').textContent = PET.on ? (show.coinT > 0 ? 'fa le fusa… ♥' : 'coccole in corso… ♥') : show.coinT > 0 ? `ha appena avuto coccole · ${Math.ceil(show.coinT)}s` : (mob ? 'tieni premuta la zampa: coccola' : 'tieni premuto il click: coccola') + ' → +1';
+    }
+  }
+  for (let k = 0; k < NH; k++) if (PTD[k * 4 + 3] > 0) { PTD[k * 4 + 3] += dt; if (PTD[k * 4 + 3] > 1.6) PTD[k * 4 + 3] = 0; }
+}
+
+// ---------------------------------------------------------------- per-frame uniforms
+const V = M4(), Pm = M4(), VPm = M4(), IVP = M4();
+const LT = new Float32Array(64);
+LIGHTS.slice(0, 8).forEach((l, i) => LT.set([l[0], l[1], l[2], l[3], l[4], l[5], l[6], l[7]], i * 8));
+let frame = 0;
+function uniforms(t, fx, fy, fz) {
+  const ex = PL.x, ey = PL.eye, ez = PL.z;
+  lookAt(V, ex, ey, ez, ex + fx, ey + fy, ez + fz);
+  persp(Pm, (68 * PI) / 180, RW / RH_, 0.02, 150);
+  mul4(VPm, Pm, V); inv4(IVP, VPm);
+  UB.set(VPm, 0); UB.set(IVP, 16); UB.set(SVP, 32);
+  UB[48] = ex; UB[49] = ey; UB[50] = ez; UB[51] = t;
+  UB[52] = SUN[0]; UB[53] = SUN[1]; UB[54] = SUN[2]; UB[55] = SSAO ? 1 : 0;
+  UB[56] = SUNC[0]; UB[57] = SUNC[1]; UB[58] = SUNC[2]; UB[59] = 0.016;
+  UB[60] = RW; UB[61] = RH_; UB[62] = 1 / RW; UB[63] = 1 / RH_;
+  UB[64] = 1.45; UB[65] = frame % 64; UB[66] = 1.0; UB[67] = DBG;
+  UB[68] = V[0]; UB[69] = V[4]; UB[70] = V[8]; UB[71] = 0; UB[72] = V[1]; UB[73] = V[5]; UB[74] = V[9]; UB[75] = 0;
+  UB.set(LT, 76);
+  UBS.set(UB); UBS.set(SVP, 0);
+  Q.writeBuffer(ubo, 0, UB); Q.writeBuffer(uboS, 0, UBS);
+}
+
+// ---------------------------------------------------------------- drawing
+const colorAtt = (view, clear, resolve) => ({ view, resolveTarget: resolve, loadOp: clear ? 'clear' : 'load', storeOp: 'store', clearValue: [0, 0, 0, 0] });
+function drawStatic(p, depthOnly) {
+  p.setVertexBuffer(0, VW.vb); p.setIndexBuffer(VW.ib, 'uint32'); p.drawIndexed(VW.n);
+}
+function drawProps(p) {
+  p.setVertexBuffer(0, VP.vb); p.setIndexBuffer(VP.ib, 'uint32');
+  TOYS.forEach((ty, i) => p.drawIndexed(PROPR[i][1], 1, PROPR[i][0], 0, 1 + i));
+}
+function drawCats(p, shells) {
+  p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32');
+  for (const c of CATS) if (c.vis) p.drawIndexed(VC.n, shells ? c.shells + 1 : 1, 0, 0, c.i * 64);
+}
+// static shadows are drawn once and copied every frame; cats and toys are drawn on top
+{
+  const e = device.createCommandEncoder();
+  const p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadowS.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'store' } });
+  UBS.set(SVP, 0); Q.writeBuffer(uboS, 0, UBS);
+  p.setPipeline(pWShadow); p.setBindGroup(0, bgShadow); drawStatic(p); p.end();
+  Q.submit([e.finish()]);
+}
+const sphereVisible = (x, y, z, r) => { // against the view frustum (rows of VP)
+  const m = VPm;
+  for (let i = 0; i < 4; i++) {
+    const s = i < 2 ? 0 : 1, sg = i & 1 ? -1 : 1;
+    const a = m[3] + sg * m[s], b = m[7] + sg * m[4 + s], c = m[11] + sg * m[8 + s], d = m[15] + sg * m[12 + s];
+    if (a * x + b * y + c * z + d < -r * hypot(a, b, c)) return false;
+  }
+  return true;
+};
+function render() {
+  const e = device.createCommandEncoder();
+  e.copyTextureToTexture({ texture: tShadowS }, { texture: tShadow }, [SHADOW, SHADOW]);
+  let p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadow.createView(), depthLoadOp: 'load', depthStoreOp: 'store' } });
+  p.setBindGroup(0, bgShadow);
+  p.setPipeline(pCShadow); for (const c of CATS) { p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32'); p.drawIndexed(VC.n, 1, 0, 0, c.i * 64); }
+  p.setPipeline(pWShadow); drawProps(p);
+  p.end();
+  // depth pre-pass (for AO and light shafts)
+  p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: TX.depth.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'store' } });
+  p.setBindGroup(0, bgPre);
+  p.setPipeline(pWPre); drawStatic(p); drawProps(p);
+  p.setVertexBuffer(0, VS.vb); p.setIndexBuffer(VS.ib, 'uint32'); p.drawIndexed(VS.n);
+  p.setPipeline(pCPre); drawCats(p, false);
+  p.end();
+  if (SSAO) {
+    for (const [pipe, tgt, bg] of [[pAO, TX.ao0, PG.ao], [pBlur, TX.ao, PG.blur]]) {
+      p = e.beginRenderPass({ colorAttachments: [colorAtt(tgt.createView(), true)] });
+      p.setPipeline(pipe); p.setBindGroup(0, bgPre); p.setBindGroup(1, bg); p.draw(3); p.end();
+    }
+  }
+  // main pass
+  p = e.beginRenderPass({
+    colorAttachments: [AA > 1 ? colorAtt(TX.ms.createView(), true, TX.hdr.createView()) : colorAtt(TX.hdr.createView(), true)],
+    depthStencilAttachment: { view: TX.msd.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'discard' },
+  });
+  p.setBindGroup(0, bgMain);
+  p.setPipeline(pW); drawStatic(p); drawProps(p);
+  p.setVertexBuffer(0, VS.vb); p.setIndexBuffer(VS.ib, 'uint32'); p.drawIndexed(VS.n);
+  p.setPipeline(pC); drawCats(p, true);
+  p.setPipeline(pE); p.setVertexBuffer(0, VE.vb); p.setIndexBuffer(VE.ib, 'uint32'); p.drawIndexed(VE.n, NC * 2);
+  p.setPipeline(pWh); p.setVertexBuffer(0, VWH); p.draw(NWH, NC);
+  p.setPipeline(pPt); p.draw(6, NDUST + NH);
+  p.end();
+  // bloom
+  for (let i = 0; i < NBL; i++) {
+    p = e.beginRenderPass({ colorAttachments: [colorAtt(TX.bl[i].createView(), true)] });
+    p.setPipeline(pDown); p.setBindGroup(0, bgPre); p.setBindGroup(1, PG.down[i]); p.draw(3); p.end();
+  }
+  for (let i = NBL - 1; i > 0; i--) {
+    p = e.beginRenderPass({ colorAttachments: [colorAtt(TX.bl[i - 1].createView(), false)] });
+    p.setPipeline(pUp); p.setBindGroup(0, bgPre); p.setBindGroup(1, PG.up[i]); p.draw(3); p.end();
+  }
+  p = e.beginRenderPass({ colorAttachments: [colorAtt((SHOT ? TX.shot : ctx.getCurrentTexture()).createView(), true)] });
+  p.setPipeline(pComp); p.setBindGroup(0, bgMain); p.setBindGroup(1, PG.comp); p.draw(3); p.end();
+  Q.submit([e.finish()]);
+}
+
+async function grab() { // ?shot: draw a frame and copy it into the canvas
+  const cp = cos(PL.pitch); draw(sin(PL.yaw) * cp, sin(PL.pitch), -cos(PL.yaw) * cp);
+  const bpr = (RW * 4 + 255) & ~255, b = device.createBuffer({ size: bpr * RH_, usage: BU.COPY_DST | BU.MAP_READ });
+  const e = device.createCommandEncoder(); e.copyTextureToBuffer({ texture: TX.shot }, { buffer: b, bytesPerRow: bpr }, [RW, RH_]); Q.submit([e.finish()]);
+  await b.mapAsync(GPUMapMode.READ); const src = new Uint8Array(b.getMappedRange()), img = new ImageData(RW, RH_);
+  for (let y = 0; y < RH_; y++) img.data.set(src.subarray(y * bpr, y * bpr + RW * 4), y * RW * 4);
+  b.unmap(); b.destroy(); canvas.getContext('2d').putImageData(img, 0, 0);
+}
+
+// ---------------------------------------------------------------- frame loop
+initCats();
+let scale = [1, 0.85, 0.7][LV], last = performance.now(), simT = 0, ftAvg = 16, ftN = 0;
+const DPR = min(devicePixelRatio || 1, 2);
+const fitSize = () => { const s = SHOT ? 1 : DPR * scale; resize(canvas.clientWidth * s, canvas.clientHeight * s); };
+if (SHOT) window.__cb = { audio: () => { meow(CATS[0]); meow(CATS[10]); coinSound(); setPurr(1, CATS[0]); return !!AC + " " + AC.state; }, PET, grab, PL, CATS, UB, device, get TX() { return TX; }, get RW() { return RW; }, setCam: (x, z, yaw, pitch, eye) => { Object.assign(PL, { x, z, yaw, pitch }); if (eye) PL.eye = eye; PL.fixEye = eye; }, enter, step: (n, dt) => { for (let i = 0; i < n; i++) tick(dt); } };
+function tick(dt) {
+  simT += dt;
+  if (inGame() && !(SHOT && window.__cb.frozen)) movePlayer(dt);
+  if (PL.fixEye) PL.eye = PL.fixEye;
+  const cp = cos(PL.pitch), fx = sin(PL.yaw) * cp, fy = sin(PL.pitch), fz = -cos(PL.yaw) * cp;
+  for (const c of CATS) updateCat(c, dt, simT);
+  updateToys(dt);
+  updatePet(dt, fx, fy, fz);
+  return [fx, fy, fz];
+}
+function draw(fx, fy, fz) {
+  fitSize();
+  uniforms(simT, fx, fy, fz);
+  // fur detail by distance, frustum culling
+  for (const c of CATS) {
+    const d = hypot(c.sp[1][0] - PL.x, c.sp[1][1] - PL.eye, c.sp[1][2] - PL.z); c.dcam = d;
+    c.vis = sphereVisible(c.sp[1][0], c.sp[1][1], c.sp[1][2], 0.45 * c.scale);
+    const k = min(1, (1.3 * c.scale) / max(d, 0.3)) * (c.fur > 0.02 ? 1.4 : 1);
+    c.shells = clamp(round(MAXSH * k), 6, 60); c.P[12] = c.shells;
+  }
+  Q.writeBuffer(bnBuf, 0, BND); Q.writeBuffer(cpBuf, 0, CPD); Q.writeBuffer(ptBuf, 0, PTD);
+  TOYS.forEach((ty, i) => { const m = MDD.subarray((1 + i) * 16, (2 + i) * 16); m.set(ty.R); m[12] = ty.x; m[13] = ty.r; m[14] = ty.z; });
+  Q.writeBuffer(mdBuf, 0, MDD);
+  render();
+  frame++;
+}
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
+  ftAvg += (dt * 1000 - ftAvg) * 0.05;
+  if (++ftN > 40) { ftN = 0; scale = ftAvg > 19 ? max(0.45, scale - 0.1) : ftAvg < 13 && scale < 1 ? min(1, scale + 0.05) : scale; }
+  const [fx, fy, fz] = tick(dt);
+  if (SHOT) return; // ?shot draws only when grab() asks
+  draw(fx, fy, fz);
+  if (!info.hidden && frame % 15 === 0) info.textContent = `${(1000 / ftAvg).toFixed(0)} fps · ${RW}×${RH_} · ${CATS.filter((c) => c.vis).length} gatti visibili`;
+}
+info.hidden = true;
+fitSize();
+requestAnimationFrame(loop);
+await say('Pronto!', 1, 400);
+try { localStorage.removeItem('catbarLoad'); } catch {}
+body.className = 'm';

@@ -261,7 +261,7 @@ $('pet').addEventListener('pointerleave', () => { PET.mouse = false; });
 
 // ---------------------------------------------------------------- looking at and petting cats
 const PET = { on: false, cat: null, t: 0, mouse: false, key: false, heart: 0, hk: 0, lost: 0, stroke: 0 };
-const PET_TIME = 1.6, COOLDOWN = 15, REACH = 2.5;
+const PET_TIME = 1.6, COOLDOWN = 10, REACH = 2.5;
 const ring = $('r'), xh = $('x'), tl = $('t');
 let lastTarget = null;
 function pickCat(ox, oy, oz, dx, dy, dz) {
@@ -301,15 +301,20 @@ function updatePet(dt, fx, fy, fz) {
   if (KEY.KeyF && !PET.fDown && target) giveSnack(target);
   PET.fDown = !!KEY.KeyF;
   const holding = PET.mouse || PET.key;
-  if (holding) { // pet the cat under the crosshair; a short grace period when it slips out of it
-    if (target) { if (target !== PET.cat || !PET.on) { PET.cat = target; PET.t = 0; } PET.on = true; PET.lost = 0; }
-    else if (PET.on && (PET.lost += dt) > 0.4) PET.on = false;
+  if (holding) { // start on the cat under the crosshair, then stay on it while the button is held
+    if (!PET.on && target) { if (target !== PET.cat) { PET.cat = target; PET.t = 0; } PET.on = true; }
   } else PET.on = false;
+  if (PET.on && PET.cat) { // keep it in view: the camera turns gently towards it (crouching moves the eye)
+    const c = PET.cat, dx = c.sp[1][0] - PL.x, dz = c.sp[1][2] - PL.z, dy = c.sp[1][1] - PL.eye;
+    const want = atan2(dy, hypot(dx, dz)) + 0.12;
+    PL.pitch = damp(PL.pitch, clamp(want, -1.4, 1.4), 4, dt);
+    PL.yaw += wrapA(atan2(dx, -dz) - PL.yaw) * min(1, dt * 2);
+  }
   for (const c of CATS) c.pet = max(0, c.pet - dt);
   let purr = 0;
   if (PET.on && PET.cat) {
     const c = PET.cat;
-    if (hypot(c.sp[1][0] - PL.x, c.sp[1][2] - PL.z) > REACH + 0.6) PET.on = false;
+    if (hypot(c.sp[1][0] - PL.x, c.sp[1][1] - PL.eye, c.sp[1][2] - PL.z) > REACH + 0.8) { PET.on = false; PET.t = 0; }
     c.pet = 0.4; purr = 1;
     PET.t += dt; PET.stroke += dt / 1.25;
     PET.heart -= dt;

@@ -28,7 +28,7 @@ browser o usa Chrome / Edge.
   anche tu), dormono acciambellati nelle cucce al sole, si lavano, si stiracchiano, mangiano dalla ciotola, salgono sui
   tiragraffi, sul bancone, sulle mensole e sui davanzali, e a volte vengono da te a chiedere coccole
 - **Coccole e monete**: guarda un gatto, tieni premuto il click e l'anello si riempie: il gatto chiude gli occhi, fa le
-  fusa, escono dei cuoricini e ricevi una moneta. Ogni gatto può darti una moneta ogni 15 secondi. Le monete restano
+  fusa, escono dei cuoricini e ricevi una moneta. Ogni gatto può darti una moneta ogni 10 secondi. Le monete restano
   salvate nel browser
 - **Il locale**: pavimento in rovere, muro di mattoni, bancone in marmo con macchina del caffè e torta, mensole con
   tazze e barattoli, insegna al neon "Cat Bar", lavagna con il menù, tavolini con cappuccini e fiori, divano di velluto

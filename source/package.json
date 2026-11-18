@@ -1,7 +1,7 @@
 {
   "name": "cat-bar",
   "private": true,
-  "description": "A procedural cat café rendered with WebGPU, bundled into one HTML file",
+  "description": "A procedural cat caf\u00e9 rendered with WebGPU, bundled into one HTML file",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
@@ -9,5 +9,6 @@
   },
   "devDependencies": {
     "esbuild": "^0.28.2"
-  }
+  },
+  "version": "1.1.0"
 }

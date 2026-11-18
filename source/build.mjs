@@ -12,7 +12,8 @@ const FILES = ['quality.js', 'math.js', 'shaders.js', 'world.js', 'cats.js', 'ma
 const readable = process.argv.includes('--readable');
 
 let js = FILES.map((f) => readFileSync(path.join(here, 'src', f), 'utf8')).join('\n');
-const tpl = readFileSync(path.join(here, 'template.html'), 'utf8');
+const VERSION = JSON.parse(readFileSync(path.join(here, 'package.json'), 'utf8')).version;
+const tpl = readFileSync(path.join(here, 'template.html'), 'utf8').replaceAll('__VERSION__', VERSION);
 // everything runs inside one async function; startup errors are shown on screen
 const wrap = (body) => `(async()=>{${body}\n})().catch(e=>{console.error(e);document.body.className='l e';document.getElementById('s').textContent=(e.cause?'':'Errore all\\'avvio: ')+e.message});`;
 

@@ -497,19 +497,25 @@ const sphereVisible = (x, y, z, r) => { // against the view frustum (rows of VP)
 };
 function render() {
   const e = device.createCommandEncoder();
-  e.copyTextureToTexture({ texture: tShadowS }, { texture: tShadow }, [SHADOW, SHADOW]);
-  let p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadow.createView(), depthLoadOp: 'load', depthStoreOp: 'store' } });
-  p.setBindGroup(0, bgShadow);
-  p.setPipeline(pCShadow); for (const c of CATS) { p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32'); p.drawIndexed(VC.n, 1, 0, 0, c.i * 64); }
-  p.setPipeline(pWShadow); drawProps(p, true);
-  p.end();
-  // depth pre-pass (for AO and light shafts)
+  let p;
+  if (!LITE || frame % 3 === 0) { // on Low the moving shadows are refreshed every third frame
+    e.copyTextureToTexture({ texture: tShadowS }, { texture: tShadow }, [SHADOW, SHADOW]);
+    p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: tShadow.createView(), depthLoadOp: 'load', depthStoreOp: 'store' } });
+    p.setBindGroup(0, bgShadow);
+    p.setPipeline(pCShadow); for (const c of CATS) { p.setVertexBuffer(0, VC.vb); p.setIndexBuffer(VC.ib, 'uint32'); p.drawIndexed(VC.n, 1, 0, 0, c.i * 64); }
+    p.setPipeline(pWShadow); drawProps(p, true);
+    p.end();
+  }
+  // depth pre-pass (for AO and light shafts); on Low without MSAA the main pass writes that depth itself
+  const pre = !LITE;
+  if (pre) {
   p = e.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: TX.depth.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'store' } });
   p.setBindGroup(0, bgPre);
   p.setPipeline(pWPre); drawStatic(p); drawProps(p);
   p.setVertexBuffer(0, VS.vb); p.setIndexBuffer(VS.ib, 'uint32'); p.drawIndexed(VS.n);
   p.setPipeline(pCPre); drawCats(p, false);
   p.end();
+  }
   if (SSAO) {
     for (const [pipe, tgt, bg] of [[pAO, TX.ao0, PG.ao], [pBlur, TX.ao, PG.blur]]) {
       p = e.beginRenderPass({ colorAttachments: [colorAtt(tgt.createView(), true)] });
@@ -519,7 +525,7 @@ function render() {
   // main pass
   p = e.beginRenderPass({
     colorAttachments: [AA > 1 ? colorAtt(TX.ms.createView(), true, TX.hdr.createView()) : colorAtt(TX.hdr.createView(), true)],
-    depthStencilAttachment: { view: TX.msd.createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: 'discard' },
+    depthStencilAttachment: { view: (pre || AA > 1 ? TX.msd : TX.depth).createView(), depthLoadOp: 'clear', depthClearValue: 1, depthStoreOp: pre || AA > 1 ? 'discard' : 'store' },
   });
   p.setBindGroup(0, bgMain);
   p.setPipeline(pW); drawStatic(p); drawProps(p);
@@ -587,7 +593,7 @@ function draw(fx, fy, fz) {
     const d = hypot(c.sp[1][0] - PL.x, c.sp[1][1] - PL.eye, c.sp[1][2] - PL.z); c.dcam = d;
     c.vis = sphereVisible(c.sp[1][0], c.sp[1][1], c.sp[1][2], 0.45 * c.scale);
     const k = min(1, (1.6 * c.scale) / max(d, 0.3)) * (c.fur > 0.02 ? 1.35 : 1);
-    c.shells = clamp(round(MAXSH * k), 6, 60); c.P[12] = c.shells;
+    c.shells = clamp(round(MAXSH * k), LITE ? (d > 6 ? 2 : 4) : 6, 60); c.P[12] = c.shells;
   }
   Q.writeBuffer(bnBuf, 0, BND, 0, CATS.length * NB * 16); Q.writeBuffer(cpBuf, 0, CPD, 0, CATS.length * 24); Q.writeBuffer(ptBuf, 0, PTD);
   const ns = layoutProps();

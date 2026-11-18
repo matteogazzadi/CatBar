@@ -12,9 +12,12 @@ if (bad && LV < 2) keep('catbar', ++LV);
 { const m = /[?&]lv=(\d)/.exec(location.search); if (m) LV = +m[1]; }
 const AA = LV > 1 ? 1 : 4;               // MSAA samples (fur uses alpha-to-coverage with it)
 const SHADOW = LV ? 2048 : 4096;         // sun shadow map
-const MAXSH = [42, 24, mob ? 10 : 12][LV];          // most fur shells on a cat close to the camera
-const VOLN = [32, 20, 10][LV];           // light shaft steps
+const MAXSH = [42, 24, mob ? 8 : 12][LV];          // most fur shells on a cat close to the camera
+const VOLN = [32, 20, 6][LV];           // light shaft steps
 const SSAO = LV < 2;
+const LITE = LV > 1;                    // Low: fewer lights, simpler shadows, no floor reflections, no depth pre-pass
+const NLIT = LITE ? 8 : 12, PCF = LITE ? 0 : 1, SSRN = LITE ? 0 : 28;
+const CATRES = LITE ? 0.0068 : 0.0046;  // grid step of the cat mesh (metres)
 const NDUST = [1400, 900, 400][LV];
 // language: Italian if the browser prefers it, English otherwise
 const IT = /^it\b/i.test((navigator.languages && navigator.languages[0]) || navigator.language || '');

@@ -95,7 +95,7 @@ function catSDF(x, y, z) {
 
 // ---------------------------------------------------------------- surface nets -> skinned mesh
 function buildCatMesh() {
-  const h = 0.0046, ox = -0.52, oy = -0.036, oz = -0.11;
+  const h = CATRES, ox = -0.52, oy = -0.036, oz = -0.11;
   const nx = ceil_((0.335 - ox) / h) + 1, ny = ceil_((0.43 - oy) / h) + 1, nz = ceil_((0.11 - oz) / h) + 1;
   const F = new Float32Array(nx * ny * nz);
   // the distance bound lets us skip ahead along each row while far from the surface

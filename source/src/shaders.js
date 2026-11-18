@@ -86,11 +86,11 @@ fn shadeSurf(w: vec3f, n: vec3f, v: vec3f, alb: vec3f, rough: f32, f0: vec3f, ao
   let L = u.sun.xyz; let ndl = dot(n, L);
   var c = vec3f(0.);
   if (ndl > 0. || trans > 0.) {
-    let sh = shadowAt(w, n * sign(ndl + 1e-4), 1);
+    let sh = shadowAt(w, n * sign(ndl + 1e-4), ${PCF});
     c += (alb / PI * max(ndl, 0.) + ggx(n, v, L, rough, f0) * max(ndl, 0.)) * u.sunc.rgb * sh;
     c += alb * trans * max(-ndl, 0.) * u.sunc.rgb * sh * vec3f(.5, .6, .2);
   }
-  for (var i = 0; i < 12; i++) {
+  for (var i = 0; i < ${NLIT}; i++) {
     let lp = u.L[i * 2]; let lc = u.L[i * 2 + 1];
     let d = lp.xyz - w; let d2 = dot(d, d); let l = d * inverseSqrt(d2);
     let nl = max(dot(n, l), 0.); let at = latt(d2, lp.w);
@@ -403,7 +403,7 @@ fn wrapL(x: f32) -> f32 { return sat((x + .45) / 1.45); }
   let T = normalize(n + flow * .9);
   let hv = normalize(L + vdir); let th = dot(T, hv);
   var sp = u.sunc.rgb * sh * pow(sqrt(max(1. - th * th, 0.)), 70.) * .05 * sat(dot(n, L) + .3);
-  for (var i = 0; i < 12; i++) {
+  for (var i = 0; i < ${NLIT}; i++) {
     let lp = u.L[i * 2]; let lc = u.L[i * 2 + 1];
     let d = lp.xyz - w; let d2 = dot(d, d); let l = d * inverseSqrt(d2); let at = latt(d2, lp.w);
     lit += lc.rgb * at * wrapL(dot(n, l));
@@ -501,7 +501,7 @@ struct VO { @builtin(position) pos: vec4f, @location(0) w: vec3f, @location(1) n
   alb = mix(alb, mix(vec3f(.02), skin, ss(.05, .2, max(p.y - top, bot - p.y))), lidm);
   // glossy cornea
   var c = alb * (hemi(n) + u.sunc.rgb * max(dot(n, u.sun.xyz), 0.) * .3) * .9;
-  for (var k = 0; k < 12; k++) {
+  for (var k = 0; k < ${NLIT}; k++) {
     let lp = u.L[k * 2]; let lc = u.L[k * 2 + 1]; let d = lp.xyz - i.w; let d2 = dot(d, d); let l = d * inverseSqrt(d2);
     c += (alb / PI * max(dot(n, l), 0.) + ggx(n, v, l, .06, vec3f(.04)) * max(dot(n, l), 0.) * (1. - lidm)) * latt(d2, lp.w) * lc.rgb * (1. - lc.w * .5);
   }
@@ -613,7 +613,7 @@ fn ign(p: vec2f) -> f32 { return fract(52.9829189 * fract(dot(p, vec2f(.06711056
   let rot = ign(fc.xy) * 6.283; let dist = length(vd);
   var occ = 0.;
   let R = .32;
-  for (var k = 0; k < 12; k++) {
+  for (var k = 0; k < ${NLIT}; k++) {
     let fk = f32(k);
     let a = rot + fk * 2.39996;
     let z = sqrt(1. - (fk + .5) / 12.);
@@ -713,7 +713,7 @@ fn lum(c: vec3f) -> f32 { return dot(c, vec3f(.2126, .7152, .0722)); }
   let coc = clamp(abs(dist0 - u.jit.w) / max(dist0, .3) * 3., 0., 6.) * u.scr.x / 1600. * ss(3.5, 1.6, u.jit.w);
   if (coc > .8 && u.jit.w > 0.) {
     var acc = c; var wsum = 1.;
-    for (var k = 0; k < 12; k++) {
+    for (var k = 0; k < ${NLIT}; k++) {
       let a = f32(k) * 2.39996; let r = sqrt((f32(k) + .5) / 12.) * coc;
       let su = uv + vec2f(cos(a), sin(a)) * r * u.scr.zw;
       let sd = textureLoad(tD, vec2i(clamp(su, vec2f(0.), vec2f(.999)) * u.scr.xy), 0);
@@ -729,7 +729,7 @@ fn lum(c: vec3f) -> f32 { return dot(c, vec3f(.2126, .7152, .0722)); }
     let fres = .04 + .96 * pow(1. - max(-v.y, 0.), 5.);
     var refl = env(r, .35) * .5; var t = .04;
     let jit = ign(fc.xy + u.misc.y * 3.);
-    for (var i = 0; i < 28; i++) {
+    for (var i = 0; i < ${SSRN}; i++) {
       t *= 1.13;
       let p = p0 + r * t * (1. + jit * .13);
       let cp = u.vp * vec4f(p, 1.);

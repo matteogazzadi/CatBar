@@ -32,7 +32,7 @@ var ORDERS = [ // name it/en, icon, price, steps
   ['Espresso', 'Espresso', '☕', 3, 2], ['Cappuccino', 'Cappuccino', '🥛', 4, 3], ['Tè', 'Tea', '🍵', 4, 2], ['Cioccolata', 'Hot chocolate', '🍫', 5, 3],
 ];
 var STEPS = [['Macina il caffè', 'Grind the coffee'], ['Estrai', 'Pull the shot'], ['Monta il latte', 'Steam the milk']];
-var DOOR = [RX - 0.5, 3.1], MACHINE = [-0.9, -4.25];
+var DOOR = [RX - 0.5, 3.1], MACHINE = [-2.4, -3.6]; // the spot in front of the espresso machine, behind the counter
 var CUST = [], spawnT = 20, HOLD = null;
 function steerTo(o, gx, gz, dt, speed, stop) {
   const dx = gx - o.x, dz = gz - o.z, d = hypot(dx, dz);
@@ -103,8 +103,13 @@ function updateCafe(dt) {
   }
   CUST = CUST.filter((c) => c.st !== 'gone');
   // the coffee machine
-  const nearM = hypot(PL.x - MACHINE[0], PL.z - MACHINE[1]) < 1.9, todo = CUST.find((c) => c.st === 'wait' && !(HOLD && HOLD.cust === c));
+  const nearM = hypot(PL.x - MACHINE[0], PL.z - MACHINE[1]) < 1.2, todo = CUST.find((c) => c.st === 'wait' && !(HOLD && HOLD.cust === c));
   $('brewBtn').hidden = !(nearM && todo && !HOLD && inGame() && !SHOPOPEN);
+  // a ☕ over the machine while an order is waiting
+  { const el = $('mTag'), x = -2.4, y = 1.62, z = -4.24, m = VPm, w = m[3] * x + m[7] * y + m[11] * z + m[15];
+    const show = todo && !HOLD && !nearM && inGame() && !SHOPOPEN && !PHOTO.on && w > 0.2;
+    el.hidden = !show;
+    if (show) { const sx = ((m[0] * x + m[4] * y + m[8] * z + m[12]) / w) * 0.5 + 0.5, sy = 0.5 - ((m[1] * x + m[5] * y + m[9] * z + m[13]) / w) * 0.5; el.style.transform = `translate(calc(${(sx * innerWidth).toFixed(1)}px - 50%), calc(${(sy * innerHeight).toFixed(1)}px - 100%))`; } }
   if (!$('brewBtn').hidden) $('brewBtn').textContent = `${todo.ord[2]} ${L_('Prepara', 'Make')} ${IT ? todo.ord[0] : todo.ord[1]}${mob ? '' : ' (R)'}`;
   $('cafeHint').hidden = !(CUST.some((c) => c.st === 'wait') && !HOLD && !nearM && inGame() && !SHOPOPEN && !PHOTO.on);
 }
@@ -149,10 +154,18 @@ function custAt(ox, oy, oz, dx, dy, dz) {
   }
   return best;
 }
+function goMachine() { // walk behind the counter, in through its open right end
+  const inside = PL.z < -3.05 && PL.z > -4.05;
+  PL.goto = inside ? { x: MACHINE[0], z: MACHINE[1], cat: null, t: 0 } : { x: 0.15, z: -2.15, cat: null, t: 0, next: [[0.15, -3.55], MACHINE] };
+}
 function tapCafe(x, y) {
   if (PLACE.on) return true;
   const r = rayAt(x, y), c = custAt(PL.x, PL.eye, PL.z, r[0], r[1], r[2]);
   if (c) { interactCustomer(c); return true; }
+  { // the espresso machine
+    const lx = -2.4 - PL.x, ly = 1.2 - PL.eye, lz = -4.24 - PL.z, b = lx * r[0] + ly * r[1] + lz * r[2], d2 = lx * lx + ly * ly + lz * lz - b * b;
+    if (b > 0 && d2 < 0.5 * 0.5) { if (hypot(PL.x - MACHINE[0], PL.z - MACHINE[1]) < 1.2) openBrew(); else goMachine(); return true; }
+  }
   return false;
 }
 
@@ -196,6 +209,7 @@ function closeBrew(serveIt) {
   BREW = null; $('brew').hidden = true; $('shop').classList.remove('gm'); closeShop();
 }
 $('brewBtn').onclick = openBrew;
+$('mTag').onclick = goMachine;
 $('bStop').onclick = brewStop;
 $('bDone').onclick = () => closeBrew(true);
 $('bX').onclick = () => closeBrew(false);

@@ -183,7 +183,7 @@ function movePlayer(dt) {
     const g = PL.goto; if (g.cat) { g.x = g.cat.sp[1][0]; g.z = g.cat.sp[1][2]; }
     const dx = g.x - PL.x, dz = g.z - PL.z, d = hypot(dx, dz), stop = g.cat ? 0.95 : 0.2;
     g.t += dt;
-    if (d < stop || g.t > 12) { PL.goto = null; if (g.cat && d < 1.5) tapCat(g.cat); }
+    if (d < stop || g.t > 12) { PL.goto = null; if (g.cat && d < 1.5) tapCat(g.cat); if (g.next && g.next.length && d < stop) { const [nx, nz] = g.next[0]; PL.goto = { x: nx, z: nz, cat: null, t: 0, next: g.next.slice(1) }; } }
     else {
       // steer around furniture on the way
       let ux = dx / d, uz = dz / d;

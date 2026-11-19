@@ -92,47 +92,78 @@ for (let i = 0; i < SKYM.i.length; i += 3) { const t = SKYM.i[i]; SKYM.i[i] = SK
 }
 
 // ---------------------------------------------------------------- the bar
+// A front counter for the customers and a back counter against the brick, with a walkway between them that you
+// enter from the right end. The espresso machine stands on the back counter, under the neon sign.
 {
-  const x0 = -5.2, x1 = 0.6, zf = -3.2, zb = -3.85, h = 1.0, cx = (x0 + x1) / 2, L = x1 - x0;
-  rbox(W, at(cx, h / 2, (zf + zb) / 2), L, h, zf - zb, 0.01, C.walnut, WOOD);
+  const x0 = -5.2, x1 = -0.3, zf = -2.45, zb = -3.05, h = 1.0, cx = (x0 + x1) / 2, L = x1 - x0, zc = (zf + zb) / 2;
+  rbox(W, at(cx, h / 2, zc), L, h, zf - zb, 0.01, C.walnut, WOOD);
   for (let x = x0 + 0.06; x < x1 - 0.04; x += 0.115) rbox(W, at(x, 0.5, zf + 0.012), 0.1, 0.78, 0.024, 0.008, jitter(C.dark, 0.15), WOOD);
   rbox(W, at(cx, 0.05, zf + 0.005), L, 0.1, 0.02, 0.004, C.iron, METAL);
-  rbox(W, at(cx, h + 0.022, -3.5), L + 0.2, 0.045, 0.78, 0.015, C.white, MARBLE);
+  rbox(W, at(cx, h + 0.022, zc - 0.01), L + 0.16, 0.045, 0.74, 0.015, C.white, MARBLE);
+  rbox(W, at(x1 + 0.012, 0.5, zc), 0.024, 0.86, zf - zb - 0.06, 0.008, C.dark, WOOD); // end panel at the way in
   cyl(W, place(x1 + 0.05, 0.2, zf + 0.16, 0, 0, PI / 2), 0.022, L + 0.1, C.brass, METAL, 12);
   for (let x = x0 + 0.3; x < x1; x += 1.2) cyl(W, at(x, 0, zf + 0.16), 0.012, 0.2, C.brass, METAL, 8);
-  // back counter with the espresso machine
-  rbox(W, at(cx, 0.45, -4.27), L, 0.9, 0.44, 0.01, C.dark, WOOD);
-  rbox(W, at(cx, 0.92, -4.27), L + 0.05, 0.04, 0.48, 0.01, C.black, MARBLE);
+  // the barista's side: an under-counter shelf with glasses
+  rbox(W, at(cx, 0.55, zb - 0.1), L - 0.1, 0.03, 0.2, 0.006, C.dark, WOOD);
+  for (let x = x0 + 0.3; x < x1 - 0.2; x += 0.16) lathe(W, at(x, 0.565, zb - 0.1), [[0, 0], [0.035, 0], [0.04, 0.11], [0, 0.11]], 10, hex(0xcfe0dc), GLASS);
+  // back counter
+  const bx0 = -5.2, bx1 = 0.6, bcx = (bx0 + bx1) / 2, bz = -4.27, top = 0.94;
+  rbox(W, at(bcx, 0.45, bz), bx1 - bx0, 0.9, 0.44, 0.01, C.dark, WOOD);
+  for (let x = bx0 + 0.3; x < bx1 - 0.2; x += 0.6) rbox(W, at(x, 0.45, bz + 0.222), 0.55, 0.8, 0.012, 0.006, shade(C.dark, 1.08), WOOD);
+  rbox(W, at(bcx, 0.92, bz), bx1 - bx0 + 0.05, 0.04, 0.48, 0.01, C.black, MARBLE);
+  // the espresso machine: chrome and red, two groups with portafilters, a steam wand, gauges, cups warming on top
   {
-    const ex = -0.9, ez = -4.25;
-    rbox(W, at(ex, 1.17, ez), 0.75, 0.46, 0.42, 0.05, hex(0xb8bcbf), METAL);
-    rbox(W, at(ex, 1.42, ez), 0.7, 0.04, 0.38, 0.01, C.iron, METAL);
-    for (const s of [-1, 1]) { cyl(W, at(ex + s * 0.17, 1.0, ez + 0.2), 0.035, 0.08, C.iron, METAL, 12); cyl(W, place(ex + s * 0.17, 1.03, ez + 0.2, 0, PI / 2, 0), 0.008, 0.18, C.iron, PLAIN, 6); }
-    for (let i = 0; i < 4; i++) cyl(W, at(ex - 0.25 + i * 0.16, 1.44, ez - 0.05), 0.04, 0.08, i & 1 ? C.white : C.terracotta, CERAMIC, 14);
-    sphere(W, at(ex + 0.22, 1.3, ez + 0.22), 0.025, C.iron, METAL, 10);
+    const ex = -2.4, ez = -4.24, red = hex(0xb81e24), chrome = hex(0xd8dcde);
+    rbox(W, at(ex, top + 0.27, ez), 0.82, 0.42, 0.42, 0.04, chrome, METAL);
+    for (const s of [-1, 1]) rbox(W, at(ex + s * 0.405, top + 0.27, ez), 0.025, 0.4, 0.4, 0.01, red, PAINT);
+    rbox(W, at(ex, top + 0.3, ez + 0.212), 0.72, 0.22, 0.012, 0.006, red, PAINT); // red front panel
+    rbox(W, at(ex, top + 0.495, ez), 0.8, 0.03, 0.4, 0.008, hex(0x9aa0a4), METAL); // cup warmer
+    for (let i = 0; i < 6; i++) lathe(W, at(ex - 0.3 + i * 0.12, top + 0.51, ez + (i & 1 ? 0.06 : -0.06)), [[0, 0], [0.025, 0], [0.032, 0.05], [0, 0.04]], 12, i % 3 ? C.white : C.terracotta, CERAMIC);
+    for (const s of [-1, 1]) { // gauges
+      lathe(W, place(ex + s * 0.2, top + 0.38, ez + 0.219, 0, PI / 2, 0), [[0, 0], [0.045, 0], [0.045, 0.012], [0, 0.014]], 18, chrome, METAL);
+      lathe(W, place(ex + s * 0.2, top + 0.38, ez + 0.232, 0, PI / 2, 0), [[0.038, 0], [0, 0.001]], 18, hex(0xf6f2e8), CERAMIC);
+      cyl(W, place(ex + s * 0.2, top + 0.38, ez + 0.234, 0, PI / 2, 0.9 * s), 0.002, 0.03, hex(0xc0202a), PLAIN, 4, 0);
+    }
+    for (const s of [-1, 1]) { // groups and portafilters
+      const gx = ex + s * 0.17;
+      cyl(W, at(gx, top + 0.11, ez + 0.25), 0.045, 0.07, chrome, METAL, 16);
+      cyl(W, at(gx, top + 0.085, ez + 0.25), 0.04, 0.03, hex(0x222222), METAL, 16);
+      cyl(W, place(gx, top + 0.095, ez + 0.28, 0, PI / 2, 0), 0.011, 0.16, hex(0x1a1a1a), PLAIN, 8, 3);
+      lathe(W, at(gx, top + 0.012, ez + 0.25), [[0, 0], [0.03, 0], [0.036, 0.055], [0, 0.05]], 12, C.white, CERAMIC);
+    }
+    rbox(W, at(ex, top + 0.012, ez + 0.24), 0.64, 0.025, 0.16, 0.006, hex(0x9aa0a4), METAL); // drip tray
+    const M = place(ex + 0.37, top + 0.25, ez + 0.24, 0, 0, 0); cyl(W, rz(M, PI - 0.25), 0.007, 0.2, chrome, METAL, 8, 2); // steam wand
+    sphere(W, at(ex + 0.37, top + 0.3, ez + 0.23), 0.018, hex(0x1a1a1a), PLAIN, 10);
+    // grinder with a hopper of beans
+    const gx = ex - 0.65;
+    rbox(W, at(gx, top + 0.15, ez), 0.18, 0.3, 0.24, 0.03, hex(0x2a2a2a), METAL);
+    lathe(W, at(gx, top + 0.3, ez), [[0.04, 0], [0.11, 0.18], [0.11, 0.19], [0, 0.19]], 18, hex(0xc8d0cc), GLASS);
+    for (let i = 0; i < 26; i++) sphere(W, at(gx + rr(-0.06, 0.06), top + 0.34 + rr(0, 0.07), ez + rr(-0.06, 0.06)), 0.011, hex(0x3a2010), PLAIN, 6, 0.7);
+    lathe(W, at(gx, top + 0.49, ez), [[0.115, 0], [0.115, 0.012], [0, 0.02]], 18, hex(0x2a2a2a), METAL);
   }
-  // grinder, jars, syrup bottles, cups on the back counter
-  cyl(W, at(-1.6, 0.94, -4.25), 0.08, 0.3, C.iron, METAL, 16); cyl(W, at(-1.6, 1.24, -4.25), 0.1, 0.18, hex(0x5a3a1a), GLASS, 16, 3, 0.06);
-  const bottle = (x, y, z, c, s = 1) => lathe(W, at(x, y, z), [[0, 0], [0.035 * s, 0], [0.037 * s, 0.2 * s], [0.012 * s, 0.27 * s], [0.012 * s, 0.31 * s], [0, 0.31 * s]], 12, c, GLASS);
-  [0x8a1a1a, 0x2a5a1a, 0xc08a20, 0x5a2a6a, 0x1a3a6a, 0xa05010].forEach((c, i) => bottle(-2.3 - i * 0.11, 0.94, -4.3 + (i & 1) * 0.08, hex(c)));
-  const jar = (x, y, z, c, h = 0.18) => { cyl(W, at(x, y, z), 0.06, h, c, GLASS, 14); cyl(W, at(x, y + h, z), 0.064, 0.025, C.walnut, WOOD, 14); };
-  jar(-3.4, 0.94, -4.25, hex(0x6a3a1a)); jar(-3.6, 0.94, -4.3, hex(0xd8c8a0)); jar(-3.8, 0.94, -4.25, hex(0x3a2a1a), 0.22);
   const cup = (M, c) => {
     lathe(W, M, [[0, 0], [0.032, 0.002], [0.042, 0.06], [0.045, 0.075], [0.04, 0.075], [0.037, 0.03], [0, 0.028]], 16, c, CERAMIC);
     torus(W, mat(M, (m) => rx(tr(m, 0.048, 0.045, 0), PI / 2)), 0.014, 0.004, c, CERAMIC, 10, 6);
     lathe(W, M, [[0, -0.008], [0.07, -0.006], [0.075, 0.0], [0, 0.0]], 18, c, CERAMIC);
   };
-  for (let i = 0; i < 5; i++) for (let k = 0; k < 2; k++) cup(at(-4.2 + i * 0.11, 0.95 + k * 0.085, -4.15, i * 0.7), k ? C.white : C.cream);
+  const bottle = (x, y, z, c, s = 1) => lathe(W, at(x, y, z), [[0, 0], [0.035 * s, 0], [0.037 * s, 0.2 * s], [0.012 * s, 0.27 * s], [0.012 * s, 0.31 * s], [0, 0.31 * s]], 12, c, GLASS);
+  [0x8a1a1a, 0x2a5a1a, 0xc08a20, 0x5a2a6a, 0x1a3a6a, 0xa05010].forEach((c, i) => bottle(-3.6 - i * 0.11, top, -4.3 + (i & 1) * 0.08, hex(c)));
+  const jar = (x, y, z, c, h = 0.18) => { cyl(W, at(x, y, z), 0.06, h, c, GLASS, 14); cyl(W, at(x, y + h, z), 0.064, 0.025, C.walnut, WOOD, 14); };
+  jar(-4.5, top, -4.25, hex(0x6a3a1a)); jar(-4.7, top, -4.3, hex(0xd8c8a0)); jar(-4.9, top, -4.25, hex(0x3a2a1a), 0.22);
+  for (let i = 0; i < 4; i++) for (let k = 0; k < 2; k++) cup(at(-1.55 + i * 0.11, top + 0.01 + k * 0.085, -4.2, i * 0.7), k ? C.white : C.cream);
+  // a little sink at the right end
+  rbox(W, at(0.15, top - 0.01, bz), 0.42, 0.03, 0.34, 0.01, hex(0x9aa0a4), METAL);
+  cyl(W, place(0.15, top + 0.02, bz - 0.12, 0, 0, 0), 0.008, 0.18, hex(0xd8dcde), METAL, 8, 2);
   // things on the bar top
   const bt = h + 0.045;
   { // cake stand with a dome-shaped cake
-    lathe(W, at(-1.9, bt, -3.45), [[0, 0], [0.08, 0], [0.02, 0.02], [0.02, 0.12], [0.16, 0.13], [0.16, 0.14], [0, 0.14]], 20, C.white, CERAMIC);
-    lathe(W, at(-1.9, bt + 0.14, -3.45), [[0, 0], [0.11, 0], [0.11, 0.07], [0.1, 0.085], [0, 0.09]], 20, hex(0xf3c6c8), PLAIN);
-    for (let i = 0; i < 8; i++) sphere(W, at(-1.9 + cos(i * 0.785) * 0.075, bt + 0.24, -3.45 + sin(i * 0.785) * 0.075), 0.013, hex(0xc0182a), CERAMIC, 8);
+    lathe(W, at(-1.9, bt, -2.72), [[0, 0], [0.08, 0], [0.02, 0.02], [0.02, 0.12], [0.16, 0.13], [0.16, 0.14], [0, 0.14]], 20, C.white, CERAMIC);
+    lathe(W, at(-1.9, bt + 0.14, -2.72), [[0, 0], [0.11, 0], [0.11, 0.07], [0.1, 0.085], [0, 0.09]], 20, hex(0xf3c6c8), PLAIN);
+    for (let i = 0; i < 8; i++) sphere(W, at(-1.9 + cos(i * 0.785) * 0.075, bt + 0.24, -2.72 + sin(i * 0.785) * 0.075), 0.013, hex(0xc0182a), CERAMIC, 8);
   }
-  cup(at(-3.0, bt + 0.006, -3.4, 1), C.white); cup(at(-4.1, bt + 0.006, -3.35, 2), C.terracotta);
-  lathe(W, at(-0.2, bt, -3.55), [[0, 0], [0.06, 0], [0.065, 0.14], [0.055, 0.16], [0, 0.16]], 16, hex(0xcfd9d6), GLASS); // tip jar
-  for (let i = 0; i < 9; i++) cyl(W, place(-0.2 + rr(-0.03, 0.03), bt + 0.01 + i * 0.006, -3.55 + rr(-0.03, 0.03), rr(0, 3), rr(-0.3, 0.3)), 0.012, 0.003, C.brass, METAL, 10);
+  cup(at(-3.0, bt + 0.006, -2.68, 1), C.white); cup(at(-4.1, bt + 0.006, -2.66, 2), C.terracotta);
+  lathe(W, at(-0.6, bt, -2.8), [[0, 0], [0.06, 0], [0.065, 0.14], [0.055, 0.16], [0, 0.16]], 16, hex(0xcfd9d6), GLASS); // tip jar
+  for (let i = 0; i < 9; i++) cyl(W, place(-0.6 + rr(-0.03, 0.03), bt + 0.01 + i * 0.006, -2.8 + rr(-0.03, 0.03), rr(0, 3), rr(-0.3, 0.3)), 0.012, 0.003, C.brass, METAL, 10);
   // shelves on the brick, with mugs, jars, books and little plants
   for (const [sx0, sx1] of [[-5.0, -3.2], [-0.8, 0.6]]) for (const y of [1.55, 2.02]) {
     rbox(W, at((sx0 + sx1) / 2, y, -4.38), sx1 - sx0, 0.035, 0.24, 0.006, C.oak, WOOD);
@@ -150,9 +181,10 @@ for (let i = 0; i < SKYM.i.length; i += 3) { const t = SKYM.i[i]; SKYM.i[i] = SK
   LIGHTS.push([-2.1, 2.0, -4.05, 2.8, 1.6, 0.25, 0.75, 1, 'lamp']);
   rbox(W, at(2.2, 1.75, -RZ + 0.02), 1.5, 0.85, 0.035, 0.008, C.walnut, WOOD);
   card(W, at(2.2, 1.75, -RZ + 0.04), 1.38, 0.73, [1 / 255, 0, 0], ART, false);
-  col({ x0: x0 - 0.05, z0: -RZ, x1: x1 + 0.05, z1: zf + 0.18, cat: true });
-  PERCH.push({ x: -4.65, y: bt, z: -3.5, yaw: -PI * 0.5, sleep: 0.5 }, { x: 0.25, y: bt, z: -3.45, yaw: -PI * 0.5, sleep: 0.2 });
-  for (const x of [-4.3, -3.2, -2.1, -1.0]) stool(x, -2.75);
+  col({ x0: x0 - 0.05, z0: zb - 0.05, x1: x1 + 0.05, z1: zf + 0.18, cat: true });   // front counter
+  col({ x0: bx0 - 0.05, z0: -RZ, x1: bx1 + 0.05, z1: bz + 0.24, cat: true });       // back counter
+  PERCH.push({ x: -4.65, y: bt, z: -2.75, yaw: -PI * 0.5, sleep: 0.5 }, { x: -0.75, y: bt, z: -2.75, yaw: -PI * 0.5, sleep: 0.2 });
+  for (const x of [-4.3, -3.2, -2.1, -1.0]) stool(x, -1.98);
 }
 function stool(x, z) {
   lathe(W, at(x, 0, z), [[0, 0], [0.2, 0], [0.2, 0.015], [0, 0.02]], 20, C.iron, METAL);
@@ -328,12 +360,12 @@ for (const [x, z] of [[-0.9, 2.3], [3.05, 1.9], [-4.6, -1.3]]) {
   BEDS.push({ x, z });
 }
 // food and water bowls
-for (const [x, c] of [[0.95, C.white], [1.15, hex(0x7ab0c8)]]) {
-  lathe(W, at(x, 0.012, -2.95), [[0, 0], [0.05, 0], [0.075, 0.05], [0.07, 0.052], [0.05, 0.015], [0, 0.015]], 18, c, CERAMIC);
+for (const [x, c] of [[1.6, C.white], [1.8, hex(0x7ab0c8)]]) {
+  lathe(W, at(x, 0.012, -2.55), [[0, 0], [0.05, 0], [0.075, 0.05], [0.07, 0.052], [0.05, 0.015], [0, 0.015]], 18, c, CERAMIC);
 }
 // what is in them is a prop (it goes up and down): BOWL.food / BOWL.water from 0 (empty) to 1 (full)
-var BOWL = { food: 0.6, water: 0.7, fx: 0.95, wx: 1.15, z: -2.95 };
-rbox(W, at(1.05, 0.004, -2.95), 0.5, 0.008, 0.3, 0.004, hex(0xc86a5a), PLAIN);
+var BOWL = { food: 0.6, water: 0.7, fx: 1.6, wx: 1.8, z: -2.55 };
+rbox(W, at(1.7, 0.004, -2.55), 0.5, 0.008, 0.3, 0.004, hex(0xc86a5a), PLAIN);
 // toy mice on the floor
 for (const [x, z, a] of [[2.6, 0.4, 1], [-2.2, -1.4, 2.5], [4.6, 1.6, 4]]) {
   sphere(W, place(x, 0.018, z, a), 0.02, hex(0x9a9a9a), FABRIC, 10, 0.8);
@@ -352,7 +384,7 @@ function pendant(x, y, z) {
   LIGHTS.push([x, y + 0.03, z, 7, 4.2, 2.5, 1.15, 0, 'lamp']);
 }
 for (const [x, z] of TABLES) pendant(x, 2.05, z);
-pendant(-3.6, 2.1, -3.45); pendant(-0.9, 2.1, -3.45);
+pendant(-3.6, 2.1, -2.75); pendant(-1.2, 2.1, -2.75);
 { // string lights along the front wall, sagging between hooks
   for (let x = -5.8; x < 5.79; x += 0.18) {
     const k = ((x + 5.8) % 1.44) / 1.44, y = 2.78 - sin(k * PI) * 0.16;

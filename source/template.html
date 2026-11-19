@@ -224,6 +224,8 @@ body:not(.g) #toast { display: none; }
 #bStop, #bDone { font-size: 1.1em; padding: .8em 1.6em; background: linear-gradient(#ffd0e6, #ff5ea8); }
 #brewBtn { position: absolute; left: 50%; bottom: 7.5em; transform: translateX(-50%); z-index: 2; padding: .8em 1.3em; background: linear-gradient(#fff2c0, #ffd04a); box-shadow: 0 0 0 3px #1c120c, 0 .3em 1.2em #000a; }
 .s #brewBtn, body:not(.g) #brewBtn { display: none; }
+#mTag { position: absolute; left: 0; top: 0; z-index: 2; width: 2.4em; height: 2.4em; padding: 0; border-radius: 50%; font-size: 1.1em; background: #fff4e6; box-shadow: 0 0 0 3px #ffd04a, 0 .3em 1em #0008; animation: dotp 1.4s infinite; }
+.s #mTag, body:not(.g) #mTag { display: none; }
 #hold { left: 50%; top: 4.2em; transform: translateX(-50%); padding: .4em .9em; border-radius: 2em; background: #fff4e6; color: #3a1a10; box-shadow: 0 0 0 3px #ffd04a; }
 #hold[hidden] { display: none !important; }
 #cafeHint { position: absolute; left: 50%; bottom: 1em; transform: translateX(-50%); max-width: 90vw; padding: .45em .9em; border-radius: 1em; background: #1c120cd9; font-size: .75em; text-align: center; pointer-events: none; }
@@ -349,6 +351,7 @@ body:not(.g) #tip, .s #tip { display: none; }
 <div id=svBox hidden><div class=g-box><header><b id=svT></b></header><p id=svP></p><textarea id=svText rows=4 spellcheck=false></textarea><p id=svMsg></p><p class=row><button id=svGo></button><button id=svNo>Annulla</button></p></div></div>
 <p id=toast hidden></p>
 <button id=brewBtn hidden></button>
+<button id=mTag hidden>☕</button>
 <p id=hold class=hud hidden></p>
 <p id=cafeHint hidden>☕ Un cliente aspetta: vai alla macchina del caffè dietro il bancone</p>
 <div id=plBar><b id=plName></b><button id=plRot>↻ Ruota</button><button id=plOk>✔ Metti qui</button><button id=plX>✕</button></div>

@@ -94,12 +94,19 @@ function updateCafe(dt) {
     else if (c.st === 'enjoy') { if (c.t < 0 && !c.ask) c.st = 'leave'; if (c.t < -40) { c.ask = null; c.st = 'leave'; } }
     else if (c.st === 'leave') { c.sit = max(0, c.sit - dt * 2); if (c.sit <= 0 && steerTo(c, DOOR[0], DOOR[1], dt, 0.9, 0.25)) c.st = 'gone'; }
     // the adopted cat walks out with its new family
-    if (c.cat) { const k = c.cat; k.st = 'adopted'; walkTo(k, c.x - cos(c.yaw) * 0.5, c.z + sin(c.yaw) * 0.5, dt, 1, 0.3); k.mood = 1; }
+    if (c.st === 'pack') { c.sit = max(0, c.sit - dt * 2); c.yaw += wrapA(atan2(-(c.carrier.z - c.z), c.carrier.x - c.x) - c.yaw) * min(1, dt * 4); }
+    if (c.cat && !c.carrying) { // the cat walks up to the open carrier and goes in
+      const k = c.cat, cr = c.carrier, ex = cr.x + cos(cr.yaw) * 0.45, ez = cr.z - sin(cr.yaw) * 0.45;
+      k.st = 'adopted'; k.mood = 1;
+      if (!k.inbound) { if (walkTo(k, ex, ez, dt, 0.6, 0.1)) k.inbound = true; }
+      else if (walkTo(k, cr.x, cr.z, dt, 0.35, 0.08) || c.t < 0) { k.gone = true; c.carrying = true; c.st = 'leave'; if (typeof meow === 'function') meow(k, 0.5); }
+    }
     bubble(c);
   }
   for (const c of CUST.filter((c) => c.st === 'gone')) {
     c.el.remove();
     if (c.cat) { c.cat.gone = true; letterLater(c, c.cat); }
+    c.carrier = null;
   }
   CUST = CUST.filter((c) => c.st !== 'gone');
   // the coffee machine
@@ -140,8 +147,11 @@ function layoutCafe(put) {
       root((m) => { tr(m, 0.02 * s, hipY, k * 0.1); rz(m, at); }); PM5.set(PM4); put('p_thigh', PM4);
       tr(PM5, 0, -0.45, 0); rz(PM5, as - at); put('p_shin', PM5);
     }
+    if (c.carrier && !c.carrying) { ident(PM4); tr(PM4, c.carrier.x, 0.012, c.carrier.z); ry(PM4, c.carrier.yaw); put('f_carrier', PM4); }
+    if (c.carrying) put('f_carrier', root((m) => { tr(m, 0.02, hipY - 0.42, 0.3); ry(m, PI / 2); }));
     if (c.st === 'enjoy' || c.ask) { ident(PM4); tr(PM4, c.seat.x + cos(c.seat.yaw) * 0.32, 0.745, c.seat.z - sin(c.seat.yaw) * 0.32); put('p_cup', PM4); }
   }
+  if (STRAYBOX) { STRAYBOX.t -= 1 / 60; if (STRAYBOX.t < 0) STRAYBOX = null; else { ident(PM4); tr(PM4, STRAYBOX.x, 0.012, STRAYBOX.z); ry(PM4, PI); put('f_carrier', PM4); } }
   for (const f of SAVE.furn) { ident(PM4); tr(PM4, f.x, 0, f.z); ry(PM4, f.yaw); put(FURN.find((d) => d[0] === f.id)[1], PM4); }
   if (PLACE.on) { ident(PM4); tr(PM4, PLACE.x, 0, PLACE.z); ry(PM4, PLACE.yaw); put(PLACE.def[1], PM4); }
 }
@@ -222,7 +232,8 @@ function askAdopt(c) {
   $('aT').textContent = L_(`${c.name} vorrebbe adottare ${k.name}`, `${c.name} would like to adopt ${k.name}`);
   $('aP').textContent = L_(`${k.name} è felice e ti vuole bene: avrà una casa tutta sua e tu riceverai 60 monete. Un nuovo gattino arriverà presto al Cat Bar.`, `${k.name} is happy and loves you: it will have a home of its own and you get 60 coins. A new kitten will soon come to the Cat Bar.`);
   $('aYes').onclick = () => {
-    c.cat = k; c.ask = null; c.st = 'leave'; c.t = 0; k.perch = null; k.y = 0;
+    c.cat = k; c.ask = null; c.st = 'pack'; c.t = 25; k.perch = null; k.y = 0; k.pet = 0;
+    c.carrier = { x: c.seat.x + cos(c.seat.yaw + PI / 2) * 0.55, z: c.seat.z - sin(c.seat.yaw + PI / 2) * 0.55, yaw: c.seat.yaw + PI / 2 };
     SAVE.adopted.push(k.name); saveItems(); setCoins(coins + 60); addXP(25);
     if (typeof coinSound === 'function') coinSound(); closeAdopt();
     toast(L_(`${k.name} va a casa con ${c.name} 🏠`, `${k.name} goes home with ${c.name} 🏠`));
@@ -246,10 +257,11 @@ function makeStray() {
   return { name: pick(STRAY_NAMES.filter((n) => !CATS.some((c) => c.name === n))) || 'Micio', typ, base, sec: pick([0x2a2016, 0xa8521c, 0x38383a, 0x4a3226]),
     white: pick([0, 0, 0.3, 0.5]), eye: pick([0xb8c040, 0xd09030, 0x6ab0d0, 0xe0c040]), fur: rr(0.009, 0.02), scale: rr(0.62, 1.05), third: 0x1a1412 };
 }
+var STRAYBOX = null;
 function addStray(d, entrance) {
   const c = addCat(d.name, L_('Trovatello', 'Stray'), d.typ, d.base, d.sec, d.white, d.eye, d.fur, d.scale, d.third, 1, 0);
   if (!c) return;
-  if (entrance) { c.x = DOOR[0]; c.z = DOOR[1]; c.yaw = PI; c.st = 'walk'; c.goal = randFree(0.4); c.tm = 20; c.pose = STAND; toast(L_(`🐾 È arrivato ${c.name}, un trovatello!`, `🐾 ${c.name}, a stray, has arrived!`)); }
+  if (entrance) { STRAYBOX = { x: DOOR[0] - 0.15, z: DOOR[1], t: 10 }; c.x = STRAYBOX.x; c.z = STRAYBOX.z; c.yaw = PI; c.st = 'walk'; c.goal = randFree(0.4); c.tm = 20; c.pose = STAND; toast(L_(`🐾 È arrivato ${c.name}, un trovatello!`, `🐾 ${c.name}, a stray, has arrived!`)); }
   else { const [x, z] = randFree(0.4); c.x = x; c.z = z; decide(c); }
   c.pw.fill(0); c.pw[c.pose] = 1; pose(c, 0); refreshAcc(c);
 }
@@ -259,6 +271,7 @@ function arriveStray(entrance) { const d = makeStray(); SAVE.strays.push(d); sav
 var FURN = [ // id, mesh, price, icon, it, en, kind, radius, perch height
   ['bed', 'f_bed', 20, '🛏', 'Cuccia', 'Cat bed', 'bed', 0.3, 0], ['igloo', 'f_igloo', 35, '⛺', 'Cuccia igloo', 'Igloo bed', 'bed', 0.32, 0],
   ['tree', 'f_tree', 45, '🌲', 'Tiragraffi con cuccia', 'Cat tree', 'perch', 0.3, 0.7], ['arm', 'f_arm', 40, '🛋', 'Poltrona', 'Armchair', 'perch', 0.42, 0.5],
+  ['carrier', 'f_carrier', 15, '🧳', 'Trasportino', 'Cat carrier', 'bed', 0.28, 0],
   ['plant', 'f_plant', 18, '🪴', 'Pianta grande', 'Big plant', 'decor', 0.22, 0], ['rug', 'f_rug', 22, '⭕', 'Tappeto tondo', 'Round rug', 'rug', 0, 0],
 ];
 var PLACE = { on: false, def: null, idx: -1, x: 0, z: 0, yaw: 0 };
@@ -272,6 +285,7 @@ function applyFurn() { // furniture adds beds, perches and colliders
     const d = FURN.find((x) => x[0] === f.id); if (!d) continue;
     if (d[6] === 'bed') { const b = { x: f.x, z: f.z }; BEDS.push(b); FREF.beds.push(b); }
     if (d[6] === 'perch') { const p = { x: f.x + (d[0] === 'arm' ? cos(f.yaw) * 0.05 : 0), y: d[8], z: f.z - (d[0] === 'arm' ? sin(f.yaw) * 0.05 : 0), yaw: f.yaw + PI / 2, sleep: 0.7, furn: true }; PERCH.push(p); FREF.perches.push(p); }
+    if (d[0] === 'carrier') { const k = { x: f.x, z: f.z, r: 0.24, cat: false }; COL.push(k); FREF.cols.push(k); } // you can't walk through it, cats walk in
     if (d[6] !== 'rug' && d[6] !== 'bed') { const c = { x: f.x, z: f.z, r: d[7], cat: true }; COL.push(c); FREF.cols.push(c); }
   }
 }

@@ -599,6 +599,17 @@ prop('f_plant', (m) => {
   lathe(m, M4(), [[0, 0], [0.13, 0], [0.17, 0.32], [0.18, 0.34], [0.16, 0.34], [0, 0.3]], 18, hex(0xd0d4cf), CERAMIC);
   for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; cyl(m, rz(ry(tr(M4(), 0, 0.3, 0), a), -0.35 - (i % 3) * 0.12), 0.006, 0.35 + (i % 3) * 0.12, C.leaf, LEAF, 5, 0); leaf(m, rz(ry(tr(M4(), cos(a) * (0.13 + (i % 3) * 0.05), 0.62 + (i % 3) * 0.1, -sin(a) * (0.13 + (i % 3) * 0.05)), a), 0.5), 0.3, 0.2, jitter(C.leaf2, 0.2), 0.4, 0.2); }
 });
+prop('f_carrier', (m) => { // a plastic pet carrier: door with bars at +x, handle on top
+  const lo = hex(0x5a7aa0), hi = hex(0xe8e2d6), bar = hex(0xb8bcc0);
+  rbox(m, tr(M4(), 0, 0.09, 0), 0.52, 0.18, 0.36, 0.05, lo, PAINT);
+  rbox(m, tr(M4(), -0.01, 0.24, 0), 0.5, 0.15, 0.35, 0.06, hi, PAINT);
+  for (const s of [-1, 1]) for (let k = 0; k < 3; k++) rbox(m, tr(M4(), -0.12 + k * 0.09, 0.24, s * 0.176), 0.06, 0.035, 0.004, 0.006, hex(0x2a2a2a), PLAIN); // air slots
+  rbox(m, tr(M4(), 0.262, 0.16, 0), 0.012, 0.24, 0.28, 0.01, bar, METAL); // door frame
+  for (let k = -3; k <= 3; k++) cyl(m, tr(M4(), 0.27, 0.05, k * 0.035), 0.004, 0.22, bar, METAL, 5, 0);
+  cyl(m, rx(tr(M4(), 0.27, 0.16, -0.13), PI / 2), 0.004, 0.26, bar, METAL, 5, 0);
+  torus(m, rx(tr(M4(), -0.01, 0.33, 0), PI / 2), 0.07, 0.012, lo, PAINT, 18, 6); // handle
+  rbox(m, tr(M4(), -0.01, 0.0, 0), 0.4, 0.012, 0.28, 0.005, hex(0xd8c8ae), PLUSH);  // a cushion inside
+});
 prop('f_rug', (m) => { lathe(m, M4(), [[0, 0], [0.75, 0], [0.75, 0.012], [0, 0.014]], 40, hex(0xc86a5a), PLUSH); torus(m, tr(M4(), 0, 0.012, 0), 0.6, 0.012, hex(0xf2e0c0), PLUSH, 40, 6); torus(m, tr(M4(), 0, 0.012, 0), 0.35, 0.01, hex(0xf2e0c0), PLUSH, 32, 6); });
 prop('f_arm', (m) => {
   const c = hex(0xd9a031);

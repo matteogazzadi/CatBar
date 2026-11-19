@@ -77,10 +77,10 @@ browser o usa Chrome / Edge.
   portalo al cliente (`R` o tocca la sua bolla). Più è buono e più i gatti sono felici, più ti pagano
 - **Livello del locale** (⭐ accanto alle monete): clienti, coccole e mini giochi danno esperienza. Al livello 2 si
   sblocca l'arredamento, al 3 due clienti alla volta e le adozioni, poi mance più ricche e tre clienti
-- **Arredamento** (scheda 🏠 del negozio): cucce, igloo, tiragraffi, poltrona, piante e tappeti. Scegli il punto
+- **Arredamento** (scheda 🏠 del negozio): cucce, igloo, trasportino, tiragraffi, poltrona, piante e tappeti. Scegli il punto
   guardando il pavimento; i gatti li usano per dormire e salire in alto
-- **Adozioni**: un cliente contento può chiedere di adottare un gatto che ti vuole bene. Se accetti, il gatto esce con
-  la sua nuova famiglia, ricevi 60 monete, dopo un po' arriva una lettera e un nuovo trovatello entra nel locale.
+- **Adozioni**: un cliente contento può chiedere di adottare un gatto che ti vuole bene. Se accetti, il cliente posa un
+  trasportino, il gatto ci entra e lui lo porta via, ricevi 60 monete, dopo un po' arriva una lettera e un nuovo trovatello entra nel locale.
   I gatti speciali delle carte non vengono mai adottati
 - **Salvataggio**: il gioco ricorda da solo nel browser monete, livello, gatti, vestiti, mobili, amicizie, e anche
   l'ora del giorno, il meteo e dove ti trovavi. Dal menù: **Esporta** (un codice da copiare), **Importa** (per
